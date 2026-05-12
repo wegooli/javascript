@@ -1,4 +1,4 @@
-# @wegooli/identity-ui
+# @wegooli/identity-react
 
 ## 1.0.0
 
@@ -27,10 +27,3 @@
 
 - Updated dependencies [9f1c34f]
   - @wegooli/identity-types@1.0.0
-  - @wegooli/identity-react@1.0.0
-
-## 0.1.1
-
-### Patch Changes
-
-- 218a874: test CI release flow
