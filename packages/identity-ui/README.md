@@ -15,14 +15,14 @@ pnpm add @wegooli/identity-ui @wegooli/identity-react @tanstack/react-query reac
 ## Quick start
 
 ```tsx
-import { ZitadelProvider } from '@wegooli/identity-react';
+import { IdentityProvider } from '@wegooli/identity-react';
 import { SignIn } from '@wegooli/identity-ui';
 
 export default function SignInPage() {
   return (
-    <ZitadelProvider bffBaseUrl="https://api.your-domain.com" publishableKey="pk_live_xxx">
+    <IdentityProvider bffBaseUrl="https://api.your-domain.com" publishableKey="pk_live_xxx">
       <SignIn redirectUrl="/dashboard" />
-    </ZitadelProvider>
+    </IdentityProvider>
   );
 }
 ```

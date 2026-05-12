@@ -1,6 +1,6 @@
 # @wegooli/identity-react
 
-React SDK for the Wegooli Identity platform — `ZitadelProvider`, authentication hooks, and a typed BFF client.
+React SDK for the Wegooli Identity platform — `IdentityProvider`, authentication hooks, and a typed BFF client.
 
 Built on top of [TanStack Query](https://tanstack.com/query) for caching, optimistic updates, and stale-while-revalidate behavior. All tokens stay on the server side (BFF pattern) — the SDK only ever holds an `HttpOnly` session cookie reference.
 
@@ -14,19 +14,19 @@ pnpm add @wegooli/identity-react @tanstack/react-query react react-dom
 
 ## Quick start
 
-Wrap your app with `ZitadelProvider`:
+Wrap your app with `IdentityProvider`:
 
 ```tsx
-import { ZitadelProvider } from '@wegooli/identity-react';
+import { IdentityProvider } from '@wegooli/identity-react';
 
 export default function App({ children }) {
   return (
-    <ZitadelProvider
+    <IdentityProvider
       bffBaseUrl="https://api.your-domain.com"
       publishableKey="pk_live_xxx"
     >
       {children}
-    </ZitadelProvider>
+    </IdentityProvider>
   );
 }
 ```

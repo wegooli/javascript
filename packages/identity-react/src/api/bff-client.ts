@@ -1,7 +1,7 @@
 let _baseUrl = '';
 let _publishableKey = '';
 
-/** Configure the BFF base URL. Called by ZitadelProvider on mount. */
+/** Configure the BFF base URL. Called by IdentityProvider on mount. */
 export function configureBffClient(baseUrl: string, publishableKey?: string): void {
   _baseUrl = baseUrl.replace(/\/$/, '');
   if (publishableKey !== undefined) {
@@ -22,7 +22,7 @@ export function readBffBaseUrl(): string {
   return _baseUrl;
 }
 
-/** Returns the publishable key configured on the ZitadelProvider, if any. */
+/** Returns the publishable key configured on the IdentityProvider, if any. */
 export function readPublishableKey(): string {
   return _publishableKey;
 }

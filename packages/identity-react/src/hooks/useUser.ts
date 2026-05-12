@@ -1,5 +1,5 @@
 import type { User } from '@wegooli/identity-types';
-import { useZitadelContext } from '../context/ZitadelContext';
+import { useIdentityContext } from '../context/IdentityContext';
 
 export interface UseUserReturn {
   user: User | null;
@@ -10,10 +10,10 @@ export interface UseUserReturn {
 /**
  * Returns the current user object and load state.
  *
- * @throws {Error} if used outside of a ZitadelProvider
+ * @throws {Error} if used outside of a IdentityProvider
  */
 export function useUser(): UseUserReturn {
-  const ctx = useZitadelContext();
+  const ctx = useIdentityContext();
 
   return {
     user: ctx.user,

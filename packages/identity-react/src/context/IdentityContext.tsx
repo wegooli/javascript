@@ -1,7 +1,7 @@
 import React from 'react';
 import type { User, PlatformUser, Organization, OrgAuthPolicy, Membership } from '@wegooli/identity-types';
 
-export interface ZitadelContextValue {
+export interface IdentityContextValue {
   isLoaded: boolean;
   isSignedIn: boolean;
   userKind: 'platform' | 'tenant' | null;
@@ -23,14 +23,14 @@ export interface ZitadelContextValue {
   signOut: () => Promise<void>;
 }
 
-export const ZitadelContext = React.createContext<ZitadelContextValue | null>(null);
+export const IdentityContext = React.createContext<IdentityContextValue | null>(null);
 
-export function useZitadelContext(): ZitadelContextValue {
-  const ctx = React.useContext(ZitadelContext);
+export function useIdentityContext(): IdentityContextValue {
+  const ctx = React.useContext(IdentityContext);
   if (ctx === null) {
     throw new Error(
-      'useAuth must be used within a ZitadelProvider. ' +
-        'Wrap your application with <ZitadelProvider> to use authentication hooks.',
+      'useAuth must be used within a IdentityProvider. ' +
+        'Wrap your application with <IdentityProvider> to use authentication hooks.',
     );
   }
   return ctx;

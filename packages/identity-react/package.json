@@ -1,7 +1,7 @@
 {
   "name": "@wegooli/identity-react",
   "version": "0.1.0",
-  "description": "React SDK for platform identity — ZitadelProvider, hooks, BFF client",
+  "description": "React SDK for platform identity — IdentityProvider, hooks, BFF client",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -47,5 +47,5 @@
   },
   "homepage": "https://github.com/wegooli/javascript/tree/main/packages/identity-react#readme",
   "bugs": "https://github.com/wegooli/javascript/issues",
-  "keywords": ["identity", "auth", "authentication", "react", "zitadel", "oidc", "sdk", "hooks", "useAuth"]
+  "keywords": ["identity", "auth", "authentication", "react", "oidc", "sdk", "hooks", "useAuth"]
 }

@@ -1,12 +1,12 @@
 'use client';
 
 // Context
-export { ZitadelContext, useZitadelContext } from './context/ZitadelContext';
-export type { ZitadelContextValue } from './context/ZitadelContext';
+export { IdentityContext, useIdentityContext } from './context/IdentityContext';
+export type { IdentityContextValue } from './context/IdentityContext';
 
 // Providers
-export { ZitadelProvider } from './provider/ZitadelProvider';
-export type { ZitadelProviderProps, AppearanceConfig } from './provider/ZitadelProvider';
+export { IdentityProvider } from './provider/IdentityProvider';
+export type { IdentityProviderProps, AppearanceConfig } from './provider/IdentityProvider';
 export { MockProvider, AutoProvider } from './provider/MockProvider';
 export type { MockProviderProps } from './provider/MockProvider';
 

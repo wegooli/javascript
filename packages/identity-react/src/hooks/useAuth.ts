@@ -1,4 +1,4 @@
-import { useZitadelContext } from '../context/ZitadelContext';
+import { useIdentityContext } from '../context/IdentityContext';
 
 export interface UseAuthReturn {
   isLoaded: boolean;
@@ -12,10 +12,10 @@ export interface UseAuthReturn {
 /**
  * Returns the current authentication state.
  *
- * @throws {Error} if used outside of a ZitadelProvider
+ * @throws {Error} if used outside of a IdentityProvider
  */
 export function useAuth(): UseAuthReturn {
-  const ctx = useZitadelContext();
+  const ctx = useIdentityContext();
 
   return {
     isLoaded: ctx.isLoaded,

@@ -7,7 +7,7 @@ import {
   usePhoneOTP,
   useMagicLink,
   usePasskey,
-  useZitadelContext,
+  useIdentityContext,
   readBffBaseUrl,
   readPublishableKey,
 } from '@wegooli/identity-react';
@@ -76,7 +76,7 @@ export function SignIn({
     isLoading: pkLoading,
     error: pkError,
   } = usePasskey();
-  const { authPolicy: contextPolicy, isLoaded: ctxLoaded, mfaPending } = useZitadelContext();
+  const { authPolicy: contextPolicy, isLoaded: ctxLoaded, mfaPending } = useIdentityContext();
   const authPolicy = authPolicyProp ?? contextPolicy ?? DEFAULT_POLICY;
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -125,7 +125,7 @@ export function SignIn({
     if (!authPolicy.allowEmailOtp) return;
     // Both platform and tenant flows now go through the BFF's self-contained
     // email-OTP endpoints. The BFF distinguishes them via the publishable_key
-    // header (set by ZitadelProvider) — no ZITADEL UI redirect for either.
+    // header (set by IdentityProvider) — no the upstream IdP UI redirect for either.
     await sendOTP(email);
     setStep('otp');
   }
@@ -143,7 +143,7 @@ export function SignIn({
   async function handlePasskey(): Promise<void> {
     // Self-contained passkey: BFF /webauthn/auth/begin → navigator.credentials.get()
     // → /webauthn/auth/finish → session cookie + redirect. Falls back to the
-    // ZITADEL hosted UI only if WebAuthn isn't available in this browser.
+    // the upstream IdP hosted UI only if WebAuthn isn't available in this browser.
     if (passkeyAvailable) {
       try {
         await signInWithPasskey();
@@ -162,7 +162,7 @@ export function SignIn({
     // Both platform and tenant flows redirect to the BFF's direct OAuth start.
     // The BFF resolves the publishable_key (sent on the query string here since
     // headers don't persist across full-page navigations) and tags the state as
-    // tenant when an App is found — ZITADEL hosted UI is bypassed in either case.
+    // tenant when an App is found — the upstream IdP hosted UI is bypassed in either case.
     //
     // We default the post-auth redirect to the current origin so the customer's
     // SDK app gets the user back automatically when no explicit redirectUrl prop

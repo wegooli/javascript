@@ -25,7 +25,7 @@ export function useSignIn(): UseSignInReturn {
           method,
           ...params,
         });
-        // Always follow the BFF-issued ZITADEL auth URL.
+        // Always follow the BFF-issued the upstream IdP auth URL.
         // params.redirectUrl is sent to the BFF for post-auth storage, not used here.
         const authUrl = response.redirectUrl;
         if (typeof window !== 'undefined' && authUrl) {

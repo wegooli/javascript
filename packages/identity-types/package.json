@@ -36,5 +36,5 @@
   },
   "homepage": "https://github.com/wegooli/javascript/tree/main/packages/identity-types#readme",
   "bugs": "https://github.com/wegooli/javascript/issues",
-  "keywords": ["identity", "auth", "authentication", "zitadel", "oidc", "types", "typescript"]
+  "keywords": ["identity", "auth", "authentication", "oidc", "types", "typescript"]
 }

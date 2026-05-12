@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { User, PlatformUser, Organization, MeResponse, OrgAuthPolicy, Membership } from '@wegooli/identity-types';
-import { ZitadelContext, ZitadelContextValue } from '../context/ZitadelContext';
+import { IdentityContext, IdentityContextValue } from '../context/IdentityContext';
 import { bffClient, configureBffClient } from '../api/bff-client';
 
 export interface AppearanceConfig {
@@ -11,7 +11,7 @@ export interface AppearanceConfig {
   fontFamily?: string;
 }
 
-export interface ZitadelProviderProps {
+export interface IdentityProviderProps {
   children: React.ReactNode;
   /** BFF base URL. Defaults to '' (same origin). */
   bffBaseUrl?: string;
@@ -30,11 +30,11 @@ const defaultQueryClient = new QueryClient({
   },
 });
 
-function ZitadelProviderInner({
+function IdentityProviderInner({
   children,
   bffBaseUrl = '',
   publishableKey,
-}: ZitadelProviderProps): React.ReactElement {
+}: IdentityProviderProps): React.ReactElement {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [userKind, setUserKind] = useState<'platform' | 'tenant' | null>(null);
@@ -135,7 +135,7 @@ function ZitadelProviderInner({
     }
   }, []);
 
-  const value: ZitadelContextValue = {
+  const value: IdentityContextValue = {
     isLoaded,
     isSignedIn,
     userKind,
@@ -150,13 +150,13 @@ function ZitadelProviderInner({
     signOut,
   };
 
-  return <ZitadelContext.Provider value={value}>{children}</ZitadelContext.Provider>;
+  return <IdentityContext.Provider value={value}>{children}</IdentityContext.Provider>;
 }
 
-export function ZitadelProvider(props: ZitadelProviderProps): React.ReactElement {
+export function IdentityProvider(props: IdentityProviderProps): React.ReactElement {
   return (
     <QueryClientProvider client={defaultQueryClient}>
-      <ZitadelProviderInner {...props} />
+      <IdentityProviderInner {...props} />
     </QueryClientProvider>
   );
 }

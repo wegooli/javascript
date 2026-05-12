@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useMFA, useZitadelContext } from '@wegooli/identity-react';
+import { useMFA, useIdentityContext } from '@wegooli/identity-react';
 import { Button } from '../../primitives/Button';
 import { Input } from '../../primitives/Input';
 import { Card } from '../../primitives/Card';
@@ -21,7 +21,7 @@ export interface MFAChallengeProps {
  */
 export function MFAChallenge({ onSuccess, bare = false }: MFAChallengeProps): React.ReactElement {
   const { verifyTOTP, isLoading, error } = useMFA();
-  const ctx = useZitadelContext();
+  const ctx = useIdentityContext();
   const [code, setCode] = useState('');
   const [done, setDone] = useState(false);
 
@@ -33,7 +33,7 @@ export function MFAChallenge({ onSuccess, bare = false }: MFAChallengeProps): Re
   }
 
   // After verifyTOTP flips mfa_pending=false on the server, the
-  // ZitadelProvider's polling/focus refresh will pick that up and the parent
+  // IdentityProvider's polling/focus refresh will pick that up and the parent
   // page can re-render. Trigger an early refetch on next tick to avoid
   // waiting for the interval.
   useEffect(() => {
