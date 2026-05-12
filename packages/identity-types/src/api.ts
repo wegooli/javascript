@@ -112,7 +112,7 @@ export interface MagicLinkSendResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Self-contained dashboard auth (no ZITADEL hosted UI)
+// Self-contained dashboard auth (no the upstream IdP hosted UI)
 
 export interface EmailOTPSendRequest {
   email: string;

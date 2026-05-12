@@ -13,7 +13,7 @@ export interface UseEmailOTPReturn {
 
 /**
  * Email-OTP authentication hook for the dashboard's self-contained sign-in/sign-up
- * (no ZITADEL hosted UI involvement).
+ * (no the upstream IdP hosted UI involvement).
  *
  * On successful `verify`, the browser is navigated to the BFF-returned redirect URL
  * (typically `/dashboard`).

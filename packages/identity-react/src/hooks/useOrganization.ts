@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Organization, Member, OrganizationMembersResponse } from '@wegooli/identity-types';
-import { useZitadelContext } from '../context/ZitadelContext';
+import { useIdentityContext } from '../context/IdentityContext';
 import { bffClient } from '../api/bff-client';
 
 export interface UseOrganizationReturn {
@@ -13,10 +13,10 @@ export interface UseOrganizationReturn {
  * Returns the current organization and its member list.
  * Fetches members from /api/org/members when the session is active.
  *
- * @throws {Error} if used outside of a ZitadelProvider
+ * @throws {Error} if used outside of a IdentityProvider
  */
 export function useOrganization(): UseOrganizationReturn {
-  const ctx = useZitadelContext();
+  const ctx = useIdentityContext();
   const [memberships, setMemberships] = useState<Member[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 

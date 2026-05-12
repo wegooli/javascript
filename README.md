@@ -5,7 +5,7 @@ Official JavaScript/TypeScript SDK suite for the Wegooli Identity platform.
 | Package | Description |
 |---|---|
 | [`@wegooli/identity-types`](./packages/identity-types) | Shared TypeScript type definitions — JWT claims, API contracts, entities |
-| [`@wegooli/identity-react`](./packages/identity-react) | React SDK — `ZitadelProvider`, `useAuth`, `useUser`, `useOrganization`, ... |
+| [`@wegooli/identity-react`](./packages/identity-react) | React SDK — `IdentityProvider`, `useAuth`, `useUser`, `useOrganization`, ... |
 | [`@wegooli/identity-ui`](./packages/identity-ui) | Pre-built UI components — `SignIn`, `SignUp`, `UserProfile`, `OrganizationSwitcher`, ... |
 
 ## Quick start
@@ -15,17 +15,17 @@ pnpm add @wegooli/identity-react @wegooli/identity-ui @tanstack/react-query reac
 ```
 
 ```tsx
-import { ZitadelProvider } from '@wegooli/identity-react';
+import { IdentityProvider } from '@wegooli/identity-react';
 import { SignIn } from '@wegooli/identity-ui';
 
 export default function App() {
   return (
-    <ZitadelProvider
+    <IdentityProvider
       bffBaseUrl="https://api.your-domain.com"
       publishableKey="pk_live_xxx"
     >
       <SignIn redirectUrl="/dashboard" />
-    </ZitadelProvider>
+    </IdentityProvider>
   );
 }
 ```

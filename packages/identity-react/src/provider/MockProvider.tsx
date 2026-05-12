@@ -1,6 +1,6 @@
 import React from 'react';
 import type { User, Organization } from '@wegooli/identity-types';
-import { ZitadelContext, ZitadelContextValue } from '../context/ZitadelContext';
+import { IdentityContext, IdentityContextValue } from '../context/IdentityContext';
 
 export interface MockProviderProps {
   children: React.ReactNode;
@@ -32,14 +32,14 @@ const DEFAULT_MOCK_ORG: Organization = {
  * Activate by setting the MOCK_AUTH=true environment variable,
  * or by rendering this component directly in your dev tree.
  *
- * It satisfies the same ZitadelContextValue interface as ZitadelProvider.
+ * It satisfies the same IdentityContextValue interface as IdentityProvider.
  */
 export function MockProvider({
   children,
   mockUser = DEFAULT_MOCK_USER,
   mockOrg = DEFAULT_MOCK_ORG,
 }: MockProviderProps): React.ReactElement {
-  const value: ZitadelContextValue = {
+  const value: IdentityContextValue = {
     isLoaded: true,
     isSignedIn: true,
     userKind: 'tenant',
@@ -56,7 +56,7 @@ export function MockProvider({
     },
   };
 
-  return <ZitadelContext.Provider value={value}>{children}</ZitadelContext.Provider>;
+  return <IdentityContext.Provider value={value}>{children}</IdentityContext.Provider>;
 }
 
 /** Convenience: auto-select MockProvider when MOCK_AUTH env var is set */

@@ -109,13 +109,13 @@ describe('SignIn', () => {
   it('throws error when useAuth used outside provider', () => {
     // useAuth is already mocked at module level; access the real impl via the mock's context throw
     const TestComponent = () => {
-      // Calling useZitadelContext directly by rendering without a provider triggers the error
-      const { useAuth: _useAuth } = { useAuth: () => { throw new Error('useAuth must be used within a ZitadelProvider'); } };
+      // Calling useIdentityContext directly by rendering without a provider triggers the error
+      const { useAuth: _useAuth } = { useAuth: () => { throw new Error('useAuth must be used within a IdentityProvider'); } };
       _useAuth();
       return null;
     };
     expect(() => render(<TestComponent />)).toThrow(
-      'useAuth must be used within a ZitadelProvider',
+      'useAuth must be used within a IdentityProvider',
     );
   });
 });

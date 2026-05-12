@@ -4,7 +4,7 @@ import type { OrgAuthPolicy } from '@wegooli/identity-types';
 import {
   useSignIn,
   useEmailOTP,
-  useZitadelContext,
+  useIdentityContext,
   readBffBaseUrl,
   readPublishableKey,
 } from '@wegooli/identity-react';
@@ -37,7 +37,7 @@ const DEFAULT_POLICY: OrgAuthPolicy = {
 /**
  * Sign-up flow content (no card chrome — wrap in AuthLayout).
  * Since the platform uses OTP/social/passkey only (no password), sign-up is
- * effectively the same flow as sign-in. ZITADEL provisions the user on first
+ * effectively the same flow as sign-in. the upstream IdP provisions the user on first
  * authentication; the BFF callback creates platform_user or tenant user based on `flow`.
  */
 export function SignUp({
@@ -50,7 +50,7 @@ export function SignUp({
 }: SignUpProps): React.ReactElement {
   const { signIn, isLoading: ssoLoading, error: ssoError } = useSignIn();
   const { send: sendOTP, verify: verifyOTP, isLoading: otpLoading, error: otpError } = useEmailOTP();
-  const { authPolicy: contextPolicy, isLoaded: ctxLoaded } = useZitadelContext();
+  const { authPolicy: contextPolicy, isLoaded: ctxLoaded } = useIdentityContext();
   const authPolicy = authPolicyProp ?? contextPolicy ?? DEFAULT_POLICY;
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
