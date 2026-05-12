@@ -29,7 +29,6 @@ export function PasskeyManager({ className }: PasskeyManagerProps): React.ReactE
   };
   useEffect(() => {
     void refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onRegister = async () => {
