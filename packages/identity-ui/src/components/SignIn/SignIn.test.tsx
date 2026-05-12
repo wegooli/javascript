@@ -13,6 +13,30 @@ vi.mock('@wegooli/identity-react', async (importOriginal) => {
       isLoading: false,
       error: null,
     })),
+    useEmailOTP: vi.fn(() => ({
+      send: vi.fn().mockResolvedValue(undefined),
+      verify: vi.fn().mockResolvedValue(undefined),
+      isLoading: false,
+      error: null,
+    })),
+    usePhoneOTP: vi.fn(() => ({
+      send: vi.fn().mockResolvedValue(undefined),
+      verify: vi.fn().mockResolvedValue(undefined),
+      isLoading: false,
+      error: null,
+    })),
+    useMagicLink: vi.fn(() => ({
+      send: vi.fn().mockResolvedValue(undefined),
+      sentTo: null,
+      isLoading: false,
+      error: null,
+    })),
+    usePasskey: vi.fn(() => ({
+      signInWithPasskey: vi.fn().mockResolvedValue(undefined),
+      isAvailable: true,
+      isLoading: false,
+      error: null,
+    })),
   };
 });
 
@@ -20,11 +44,7 @@ function renderWithProvider(ui: React.ReactElement) {
   return render(<MockProvider>{ui}</MockProvider>);
 }
 
-// TODO: re-enable once vitest jsdom environment is configured.
-// Tests currently fail with "document is not defined" because vitest defaults
-// to the node environment. Adding jsdom + a vitest.config.ts is tracked as a
-// follow-up so we are not blocking CI on it.
-describe.skip('SignIn', () => {
+describe('SignIn', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -40,7 +60,7 @@ describe.skip('SignIn', () => {
     renderWithProvider(
       <SignIn authPolicy={{ allowPasskey: true, allowEmailOtp: false, allowedOauthProviders: [], ssoEnabled: false }} />,
     );
-    expect(screen.getByText(/sign in with passkey/i)).toBeDefined();
+    expect(screen.getByText(/continue with passkey/i)).toBeDefined();
   });
 
   it('renders OAuth buttons for allowed providers', () => {
@@ -57,7 +77,7 @@ describe.skip('SignIn', () => {
     renderWithProvider(
       <SignIn authPolicy={{ allowPasskey: false, allowEmailOtp: true, allowedOauthProviders: [], ssoEnabled: false }} />,
     );
-    expect(screen.queryByText(/sign in with passkey/i)).toBeNull();
+    expect(screen.queryByText(/continue with passkey/i)).toBeNull();
   });
 
   it('accepts appearance prop without error', () => {

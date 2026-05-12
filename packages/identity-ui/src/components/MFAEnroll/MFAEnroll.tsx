@@ -45,6 +45,7 @@ export function MFAEnroll({ onSuccess, bare = false, defaultLabel }: MFAEnrollPr
         // error already captured by hook
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function submitCode(e: React.FormEvent) {

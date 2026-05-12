@@ -20,7 +20,7 @@
     "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
   },
   "peerDependencies": {
     "react": "^18.0.0",
@@ -38,7 +38,8 @@
     "typescript": "^5.5.0",
     "vitest": "^2.0.0",
     "@testing-library/react": "^16.0.0",
-    "@testing-library/jest-dom": "^6.0.0"
+    "@testing-library/jest-dom": "^6.0.0",
+    "jsdom": "^25.0.0"
   },
   "license": "MIT",
   "publishConfig": {

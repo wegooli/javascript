@@ -31,6 +31,7 @@ export function ProfileManager({ className }: ProfileManagerProps): React.ReactE
 
   useEffect(() => {
     void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!profile) {
