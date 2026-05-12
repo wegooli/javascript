@@ -1,0 +1,51 @@
+{
+  "name": "@wegooli/identity-react",
+  "version": "0.1.0",
+  "description": "React SDK for platform identity — ZitadelProvider, hooks, BFF client",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "@wegooli/identity-types": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wegooli/javascript.git",
+    "directory": "packages/identity-react"
+  },
+  "homepage": "https://github.com/wegooli/javascript/tree/main/packages/identity-react#readme",
+  "bugs": "https://github.com/wegooli/javascript/issues",
+  "keywords": ["identity", "auth", "authentication", "react", "zitadel", "oidc", "sdk", "hooks", "useAuth"]
+}

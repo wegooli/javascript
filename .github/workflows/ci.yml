@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Verify dist artifacts
+        run: |
+          for pkg in identity-types identity-react identity-ui; do
+            test -f "packages/$pkg/dist/index.js" || { echo "Missing $pkg/dist/index.js"; exit 1; }
+            test -f "packages/$pkg/dist/index.mjs" || { echo "Missing $pkg/dist/index.mjs"; exit 1; }
+            test -f "packages/$pkg/dist/index.d.ts" || { echo "Missing $pkg/dist/index.d.ts"; exit 1; }
+          done
+          echo "All dist artifacts present"
