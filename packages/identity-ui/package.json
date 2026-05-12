@@ -10,10 +10,13 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
-    }
+    },
+    "./tailwind.preset": "./tailwind.preset.js",
+    "./tailwind.preset.js": "./tailwind.preset.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "tailwind.preset.js"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts",
