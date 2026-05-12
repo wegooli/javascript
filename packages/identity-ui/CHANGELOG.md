@@ -1,5 +1,14 @@
 # @wegooli/identity-ui
 
+## 1.0.1
+
+### Patch Changes
+
+- 24fc487: Verify the end-to-end automated publish flow after the NODE_AUTH_TOKEN fix in #8. No runtime change in any package.
+- Updated dependencies [24fc487]
+  - @wegooli/identity-types@1.0.1
+  - @wegooli/identity-react@1.0.1
+
 ## 1.0.0
 
 ### Minor Changes
