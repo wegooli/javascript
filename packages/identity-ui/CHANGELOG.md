@@ -1,5 +1,12 @@
 # @wegooli/identity-ui
 
+## 1.0.5
+
+### Patch Changes
+
+- Updated dependencies [2868645]
+  - @wegooli/identity-react@1.0.5
+
 ## 1.0.4
 
 ### Patch Changes
