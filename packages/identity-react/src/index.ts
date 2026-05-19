@@ -58,5 +58,10 @@ export {
 // PKCE Authorization Code flow helpers — used by identity-ui's SignIn / SignUp
 // to attach a `code_challenge` to OAuth start URLs, and by IdentityProvider
 // to redeem the resulting `?code=` for a bearer token.
-export { generatePKCEChallenge, readPKCEVerifier, clearPKCEVerifier } from './api/pkce';
+export {
+  generatePKCEChallenge,
+  computeChallengeFromVerifier,
+  readPKCEVerifier,
+  clearPKCEVerifier,
+} from './api/pkce';
 export { handleOAuthCallback } from './api/oauth-callback';
