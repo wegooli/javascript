@@ -1,12 +1,35 @@
 let _baseUrl = '';
 let _publishableKey = '';
 
+const ACCESS_TOKEN_STORAGE_KEY = 'wg_access_token';
+
 /** Configure the BFF base URL. Called by IdentityProvider on mount. */
 export function configureBffClient(baseUrl: string, publishableKey?: string): void {
   _baseUrl = baseUrl.replace(/\/$/, '');
   if (publishableKey !== undefined) {
     _publishableKey = publishableKey;
   }
+}
+
+/**
+ * Read the bearer token persisted by the PKCE callback handler. Returns null
+ * during SSR or when the user signs in via cookie-only (same-site) flow.
+ */
+export function readAccessToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
+}
+
+/** Persist the bearer token after a successful PKCE token exchange. */
+export function writeAccessToken(token: string): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
+}
+
+/** Remove the bearer token — called on sign-out / 401. */
+export function clearAccessToken(): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
 }
 
 function getBaseUrl(): string {
@@ -30,11 +53,23 @@ export function readPublishableKey(): string {
 function authHeaders(): Record<string, string> {
   // The BFF resolves an AppContext from this header so endpoints can scope
   // tenant-side operations (sign-up, sign-in, etc.) to the right organization.
-  return _publishableKey ? { 'X-Platform-Publishable-Key': _publishableKey } : {};
+  //
+  // Authorization: Bearer is added when the PKCE callback handler stashed a
+  // token — cross-site SDK consumers whose SameSite=Lax cookie is blocked
+  // depend on it. Same-site consumers keep using the HttpOnly cookie sent
+  // via `credentials: include`; the Bearer header is additive, not exclusive.
+  const headers: Record<string, string> = {};
+  if (_publishableKey) headers['X-Platform-Publishable-Key'] = _publishableKey;
+  const token = readAccessToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
 }
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (res.status === 401) {
+    // Clear the (now-stale) bearer token alongside the cookie redirect — the
+    // BFF will issue a fresh one when the user signs in again.
+    clearAccessToken();
     if (typeof window !== 'undefined') {
       window.location.href = '/sign-in';
     }

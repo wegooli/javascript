@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { User, PlatformUser, Organization, MeResponse, OrgAuthPolicy, Membership } from '@wegooli/identity-types';
 import { IdentityContext, IdentityContextValue } from '../context/IdentityContext';
-import { bffClient, configureBffClient } from '../api/bff-client';
+import { bffClient, clearAccessToken, configureBffClient, readAccessToken } from '../api/bff-client';
+import { handleOAuthCallback } from '../api/oauth-callback';
 
 export interface AppearanceConfig {
   primaryColor?: string;
@@ -52,6 +53,7 @@ function IdentityProviderInner({
     // background interval so a force-logout from the dashboard takes effect
     // without a full page reload.
     let cancelled = false;
+
     const refreshMe = (markLoaded: boolean) => {
       bffClient
         .get<MeResponse>('/api/auth/me')
@@ -80,7 +82,13 @@ function IdentityProviderInner({
         });
     };
 
-    refreshMe(true);
+    // PKCE callback redemption — when a `?code=` is present on the URL,
+    // exchange it for a bearer token before the first /api/auth/me fetch
+    // so the request is authenticated on the first try (avoids a flash of
+    // signed-out UI). Resolves to false on plain page loads.
+    handleOAuthCallback().finally(() => {
+      if (!cancelled) refreshMe(true);
+    });
 
     bffClient
       .get<OrgAuthPolicy>(`/api/auth/policy?publishableKey=${encodeURIComponent(publishableKey)}`)
@@ -117,12 +125,14 @@ function IdentityProviderInner({
     };
   }, [bffBaseUrl, publishableKey]);
 
-  // Sessions are HttpOnly-cookie based — there is no client-readable token.
-  // Kept for backward-compat with consumers that still call useAuth().getToken().
-  const getToken = useCallback(async (): Promise<string | null> => null, []);
+  // Same-site consumers sign in via HttpOnly cookie and getToken stays null.
+  // Cross-site SDK consumers receive a bearer token through the PKCE callback
+  // and getToken surfaces it (e.g. for caller's own fetch interceptor).
+  const getToken = useCallback(async (): Promise<string | null> => readAccessToken(), []);
 
   const signOut = useCallback(async (): Promise<void> => {
     await bffClient.post('/api/auth/sign-out', {});
+    clearAccessToken();
     setIsSignedIn(false);
     setUserKind(null);
     setUser(null);

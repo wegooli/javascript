@@ -10,6 +10,7 @@ import {
   useIdentityContext,
   readBffBaseUrl,
   readPublishableKey,
+  generatePKCEChallenge,
 } from '@wegooli/identity-react';
 import { Button } from '../../primitives/Button';
 import { Input } from '../../primitives/Input';
@@ -173,6 +174,19 @@ export function SignIn({
     if (dest) params.set('redirectUrl', dest);
     const pk = readPublishableKey();
     if (pk) params.set('publishableKey', pk);
+    // Attach PKCE challenge so the BFF callback can issue a one-time `?code=`
+    // instead of the legacy `#access_token=` fragment. The verifier is stashed
+    // in sessionStorage and consumed by IdentityProvider's handleOAuthCallback
+    // when the IdP redirects back. Falling back silently if Web Crypto is
+    // unavailable (very old browsers / non-secure contexts) — the BFF still
+    // supports the fragment surface for those clients.
+    try {
+      const challenge = await generatePKCEChallenge();
+      params.set('code_challenge', challenge);
+      params.set('code_challenge_method', 'S256');
+    } catch {
+      /* fall back to fragment flow */
+    }
     const qs = params.toString();
     const base = `/api/auth/social/${encodeURIComponent(provider)}/start`;
     const bffBase = readBffBaseUrl();

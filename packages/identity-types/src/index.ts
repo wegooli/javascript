@@ -34,4 +34,7 @@ export type {
   EmailOTPSendRequest,
   EmailOTPVerifyRequest,
   EmailOTPVerifyResponse,
+  TokenExchangeRequest,
+  TokenExchangeResponse,
+  TokenExchangeError,
 } from './api';
