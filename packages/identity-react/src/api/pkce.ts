@@ -23,30 +23,42 @@ function ensureBrowser(): void {
 }
 
 /**
+ * Compute the S256 PKCE challenge from a verifier string.
+ *
+ * Per RFC 7636 §4.2:
+ *     code_challenge = BASE64URL(SHA256(ASCII(code_verifier)))
+ *
+ * The hash input is the **ASCII bytes of the base64url-encoded verifier
+ * string**, not the random bytes that produced it. Servers that follow the
+ * spec (e.g. the BFF's `sha256.Sum256([]byte(req.CodeVerifier))`) reject a
+ * hash of the raw bytes with `code_verifier mismatch`.
+ *
+ * Exported so unit tests can pin the implementation against the RFC 7636 §B
+ * appendix test vector — drift on the hash input was exactly the SDK 1.0.3
+ * regression. Library consumers should keep using `generatePKCEChallenge()`.
+ */
+export async function computeChallengeFromVerifier(verifier: string): Promise<string> {
+  ensureBrowser();
+  const verifierAscii = new TextEncoder().encode(verifier);
+  const digest = await window.crypto.subtle.digest('SHA-256', verifierAscii);
+  return base64UrlEncode(new Uint8Array(digest));
+}
+
+/**
  * Generate a fresh PKCE verifier and stash it in sessionStorage under
  * VERIFIER_STORAGE_KEY. Returns the matching S256 challenge — the caller
  * appends this to the OAuth start URL as `code_challenge=…`.
  *
  * The verifier never leaves the browser. sessionStorage scope is
  * per-tab/origin, which fits the OAuth round-trip (same tab, same origin).
- *
- * Per RFC 7636 §4.2:
- *     code_challenge = BASE64URL(SHA256(ASCII(code_verifier)))
- * The hash input is the **ASCII bytes of the base64url-encoded verifier
- * string**, not the random bytes that produced it. Servers that follow
- * the spec (e.g. the BFF's `sha256.Sum256([]byte(req.CodeVerifier))`)
- * would reject a hash of the raw bytes with `code_verifier mismatch`.
  */
 export async function generatePKCEChallenge(): Promise<string> {
   ensureBrowser();
   const verifierBytes = new Uint8Array(32);
   window.crypto.getRandomValues(verifierBytes);
   const verifier = base64UrlEncode(verifierBytes);
-  const verifierAscii = new TextEncoder().encode(verifier);
-  const digest = await window.crypto.subtle.digest('SHA-256', verifierAscii);
-  const challenge = base64UrlEncode(new Uint8Array(digest));
   window.sessionStorage.setItem(VERIFIER_STORAGE_KEY, verifier);
-  return challenge;
+  return computeChallengeFromVerifier(verifier);
 }
 
 /** Read the verifier stashed by generatePKCEChallenge(), or null if absent. */
