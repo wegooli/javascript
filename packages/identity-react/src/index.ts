@@ -45,4 +45,18 @@ export { useProfile } from './hooks/useProfile';
 export type { UseProfileReturn, ProfileIdentifiers, ProfileIdentifierKind } from './hooks/useProfile';
 
 // BFF client (lower-level, for advanced use)
-export { bffClient, configureBffClient, readBffBaseUrl, readPublishableKey } from './api/bff-client';
+export {
+  bffClient,
+  configureBffClient,
+  readBffBaseUrl,
+  readPublishableKey,
+  readAccessToken,
+  writeAccessToken,
+  clearAccessToken,
+} from './api/bff-client';
+
+// PKCE Authorization Code flow helpers — used by identity-ui's SignIn / SignUp
+// to attach a `code_challenge` to OAuth start URLs, and by IdentityProvider
+// to redeem the resulting `?code=` for a bearer token.
+export { generatePKCEChallenge, readPKCEVerifier, clearPKCEVerifier } from './api/pkce';
+export { handleOAuthCallback } from './api/oauth-callback';

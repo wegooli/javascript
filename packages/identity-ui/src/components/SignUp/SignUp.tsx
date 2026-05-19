@@ -7,6 +7,7 @@ import {
   useIdentityContext,
   readBffBaseUrl,
   readPublishableKey,
+  generatePKCEChallenge,
 } from '@wegooli/identity-react';
 import { Button } from '../../primitives/Button';
 import { Input } from '../../primitives/Input';
@@ -81,6 +82,16 @@ export function SignUp({
     if (dest) params.set('redirectUrl', dest);
     const pk = readPublishableKey();
     if (pk) params.set('publishableKey', pk);
+    // PKCE challenge — IdentityProvider's handleOAuthCallback redeems the
+    // resulting `?code=` against POST /api/auth/token. See SignIn.tsx for
+    // the full rationale.
+    try {
+      const challenge = await generatePKCEChallenge();
+      params.set('code_challenge', challenge);
+      params.set('code_challenge_method', 'S256');
+    } catch {
+      /* fall back to fragment flow */
+    }
     const qs = params.toString();
     const base = `/api/auth/social/${encodeURIComponent(provider)}/start`;
     const bffBase = readBffBaseUrl();

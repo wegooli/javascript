@@ -112,6 +112,33 @@ export interface MagicLinkSendResponse {
 }
 
 // ---------------------------------------------------------------------------
+// PKCE Authorization Code flow (SDK ↔ BFF)
+// RFC 6749 §4.1 + RFC 7636. Used to exchange the one-time `?code=` the BFF
+// emits after an OAuth callback for the SDK's bearer access_token, keeping
+// the token off the URL fragment and out of browser history.
+
+export interface TokenExchangeRequest {
+  /** One-time authorization code from the OAuth callback `?code=…` */
+  code: string;
+  /** PKCE verifier the SDK generated at OAuth start (base64url 32-byte) */
+  code_verifier: string;
+}
+
+export interface TokenExchangeResponse {
+  /** Opaque session bearer — present in subsequent `Authorization: Bearer` */
+  access_token: string;
+  token_type: 'Bearer';
+  /** Token lifetime in seconds (mirrors BFF cookie max-age, default 604800) */
+  expires_in: number;
+}
+
+/** RFC 6749 §5.2 error envelope. */
+export interface TokenExchangeError {
+  error: 'invalid_request' | 'invalid_grant';
+  error_description?: string;
+}
+
+// ---------------------------------------------------------------------------
 // Self-contained dashboard auth (no the upstream IdP hosted UI)
 
 export interface EmailOTPSendRequest {
