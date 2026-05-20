@@ -200,6 +200,7 @@ export function SignIn({
   const appName = branding?.appName || appearance?.logoAlt || 'Sign in';
   const logoUrl = branding?.logoUrl || appearance?.logoUrl;
   const accentColor = branding?.primaryColor || appearance?.variables?.colorPrimary;
+  const textColor = branding?.textColor || undefined;
 
   const inner = (
     <div className="space-y-4" style={{ fontFamily: appearance?.variables?.fontFamily }}>
@@ -389,8 +390,15 @@ export function SignIn({
   // Branding values come from /api/auth/policy via context; no manual props needed.
   // Wait for the policy fetch to complete before rendering so we don't flash
   // the default-policy state and then re-render with the brand-correct one.
-  const cardStyle = accentColor
-    ? ({ ['--brand-primary' as string]: accentColor } as React.CSSProperties)
+  // Brand styles are exposed via CSS custom properties so descendants pick them
+  // up (e.g. headings reference `var(--brand-text, …)`). Primary drives
+  // buttons / focus rings; text color drives the heading + body copy on the
+  // card (falls back to neutral palette when unset).
+  const cardStyle = (accentColor || textColor)
+    ? ({
+        ...(accentColor ? { ['--brand-primary' as string]: accentColor } : {}),
+        ...(textColor ? { ['--brand-text' as string]: textColor, color: textColor } : {}),
+      } as React.CSSProperties)
     : undefined;
 
   return (

@@ -78,6 +78,8 @@ export interface AuthBranding {
   appName: string;
   logoUrl: string;
   primaryColor: string;
+  /** Optional body/heading text color (hex). Empty string = inherit defaults. */
+  textColor?: string;
 }
 
 /** Phase B — which identifier kinds tenant users can sign in with. */
