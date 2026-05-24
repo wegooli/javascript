@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { bffClient } from '../api/bff-client';
+import { bffClient, writeAccessToken } from '../api/bff-client';
 
 // Browser-side WebAuthn JSON shapes are mostly opaque to us — go-webauthn on
 // the server expects them echoed back as-is. Keeping the typing loose lets us
@@ -87,10 +87,14 @@ export function usePasskey(): UsePasskeyReturn {
         if (!cred) throw new Error('Passkey assertion was cancelled');
 
         const credJSON = encodeAssertion(cred);
-        const finish = await bffClient.post<{ status: string; redirectUrl?: string }>(
+        const finish = await bffClient.post<{ status: string; redirectUrl?: string; access_token?: string }>(
           '/api/auth/webauthn/auth/finish',
           { sessionData: begin.sessionData, credential: credJSON },
         );
+        // Tenant flow returns access_token; persist for Authorization: Bearer use.
+        if (finish.access_token) {
+          writeAccessToken(finish.access_token);
+        }
         if (typeof window !== 'undefined' && finish.redirectUrl) {
           window.location.href = finish.redirectUrl;
         }

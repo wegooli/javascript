@@ -155,6 +155,12 @@ export interface EmailOTPVerifyRequest {
 export interface EmailOTPVerifyResponse {
   status: 'ok';
   redirectUrl: string;
+  /**
+   * Returned by the BFF when the caller supplied a publishable_key (SDK / tenant
+   * flow). The SDK persists it via writeAccessToken so subsequent requests to
+   * the customer app's own backend can attach Authorization: Bearer.
+   */
+  access_token?: string;
 }
 
 // ---------------------------------------------------------------------------

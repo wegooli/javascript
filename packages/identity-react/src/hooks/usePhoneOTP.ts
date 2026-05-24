@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { bffClient } from '../api/bff-client';
+import { bffClient, writeAccessToken } from '../api/bff-client';
 
 export interface UsePhoneOTPReturn {
   send: (phone: string) => Promise<void>;
@@ -35,10 +35,14 @@ export function usePhoneOTP(): UsePhoneOTPReturn {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await bffClient.post<{ status: string; redirectUrl?: string }>(
+      const res = await bffClient.post<{ status: string; redirectUrl?: string; access_token?: string }>(
         '/api/auth/phone-otp/verify',
         { phone, code },
       );
+      // Tenant flow returns access_token; persist for Authorization: Bearer use.
+      if (res.access_token) {
+        writeAccessToken(res.access_token);
+      }
       if (typeof window !== 'undefined' && res.redirectUrl) {
         window.location.href = res.redirectUrl;
       }

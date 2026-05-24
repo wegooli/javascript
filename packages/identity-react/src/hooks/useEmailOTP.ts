@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { EmailOTPVerifyResponse } from '@wegooli/identity-types';
-import { bffClient } from '../api/bff-client';
+import { bffClient, writeAccessToken } from '../api/bff-client';
 
 export interface UseEmailOTPReturn {
   /** Send a 6-digit code to the given email. */
@@ -41,6 +41,12 @@ export function useEmailOTP(): UseEmailOTPReturn {
     setError(null);
     try {
       const res = await bffClient.post<EmailOTPVerifyResponse>('/api/auth/email-otp/verify', { email, code });
+      // Tenant flow (publishable_key present) returns access_token so external
+      // customer apps can attach Authorization: Bearer to their own backend
+      // calls. Platform flow omits it (cookie-only).
+      if (res.access_token) {
+        writeAccessToken(res.access_token);
+      }
       if (typeof window !== 'undefined' && res.redirectUrl) {
         window.location.href = res.redirectUrl;
       }
