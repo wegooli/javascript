@@ -1,5 +1,13 @@
 # @wegooli/identity-ui
 
+## 1.0.7
+
+### Patch Changes
+
+- Updated dependencies [fa04fa6]
+  - @wegooli/identity-types@1.0.7
+  - @wegooli/identity-react@1.0.7
+
 ## 1.0.6
 
 ### Patch Changes
