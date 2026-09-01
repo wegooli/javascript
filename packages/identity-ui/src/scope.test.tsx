@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
-import * as React from 'react';
 import { IDENTITY_SCOPE_CLASS, IdentityScope, withIdentityScope } from './scope';
 import { Button } from './index';
 
