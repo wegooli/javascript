@@ -1,0 +1,15 @@
+/*
+ * @wegooli/identity-ui 의 스타일.
+ *
+ * 소비자 앱에서 한 번 import 한다:
+ *   import '@wegooli/identity-ui/styles.css';
+ *
+ * 이러면 소비자가 Tailwind 를 쓰든 안 쓰든, 어떤 스케일을 쓰든 컴포넌트가
+ * 의도한 모습으로 그려진다. Tailwind 프리셋을 적용하거나 content 목록에
+ * 이 패키지를 넣을 필요가 없다.
+ *
+ * @tailwind base 는 넣지 않는다 — preflight 는 소비자 앱 전체의 기본 스타일을
+ * 초기화해 버린다.
+ */
+@tailwind components;
+@tailwind utilities;

@@ -24,12 +24,26 @@ export default function App({ children }) {
     <IdentityProvider
       bffBaseUrl="https://api.your-domain.com"
       publishableKey="pk_live_xxx"
+      signInUrl="/login"
     >
       {children}
     </IdentityProvider>
   );
 }
 ```
+
+### `signInUrl`
+
+Where the SDK sends the browser when the session ends — after `signOut()`, and
+when the BFF answers `401`.
+
+Defaults to `/sign-in`. **If your sign-in page lives anywhere else, set this.**
+Leaving it wrong means sign-out lands on a 404, and the forced navigation can
+cut off work your app was doing at that moment (clearing its own session
+cookie, for instance).
+
+Pass `null` to stop the SDK from navigating at all — the `401` still surfaces
+as a rejected promise, and your app decides what to do.
 
 Then consume auth state from any component:
 

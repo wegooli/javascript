@@ -48,19 +48,43 @@ Primitives are also exported for custom flows:
 import { Button, Input, Card, Divider, SocialButton, GoogleIcon } from '@wegooli/identity-ui';
 ```
 
-## Tailwind setup
+## Styles
 
-Add the package to your Tailwind `content` array so its classes are not purged:
+Import the stylesheet once, anywhere in your app:
+
+```ts
+import '@wegooli/identity-ui/styles.css';
+```
+
+That is all. It works whether or not your app uses Tailwind, and whatever
+config it has — the stylesheet ships prebuilt and every rule is scoped to the
+components' own wrapper (`.wg-identity`), so it neither leaks into your markup
+nor loses to your own utility classes.
+
+> **Upgrading from 1.0.7 or earlier?** Earlier versions shipped no CSS and
+> relied on the consuming app's Tailwind to generate the classes. That broke
+> silently — with no error — when the app didn't add this package to its
+> `content` array, didn't apply the preset, or redefined the spacing scale.
+> Add the import above and you can drop both workarounds.
+
+<details>
+<summary>Using Tailwind and prefer to generate the classes yourself?</summary>
+
+Apply the preset and include the package in `content`. Note that your own
+`theme.extend.spacing` / `colors` will then apply to the components too, so a
+customised scale changes how they look.
 
 ```js
 // tailwind.config.js
 module.exports = {
+  presets: [require('@wegooli/identity-ui/tailwind.preset')],
   content: [
     './src/**/*.{ts,tsx}',
     './node_modules/@wegooli/identity-ui/dist/**/*.{js,mjs}',
   ],
 };
 ```
+</details>
 
 ## Theming
 

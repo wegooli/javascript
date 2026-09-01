@@ -12,22 +12,24 @@
       "require": "./dist/index.js"
     },
     "./tailwind.preset": "./tailwind.preset.js",
-    "./tailwind.preset.js": "./tailwind.preset.js"
+    "./tailwind.preset.js": "./tailwind.preset.js",
+    "./styles.css": "./dist/styles.css"
   },
   "files": [
     "dist",
     "tailwind.preset.js"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "build": "tsup src/index.ts --format esm,cjs --dts && pnpm build:css",
     "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:css": "tailwindcss -c tailwind.build.config.js -i src/styles.css -o dist/styles.css --minify"
   },
   "peerDependencies": {
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0",
     "@wegooli/identity-react": "workspace:*"
   },
   "dependencies": {
