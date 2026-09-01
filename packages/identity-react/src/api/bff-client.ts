@@ -1,14 +1,33 @@
 let _baseUrl = '';
 let _publishableKey = '';
 
+/**
+ * 세션이 끊겼을 때 보낼 경로. 소비자 앱마다 로그인 화면 경로가 다르므로
+ * IdentityProvider 가 설정한다. null 이면 SDK 가 이동시키지 않고, 401 을
+ * 예외로만 알린다 (소비자가 직접 처리).
+ */
+let _signInUrl: string | null = '/sign-in';
+
 const ACCESS_TOKEN_STORAGE_KEY = 'wg_access_token';
 
 /** Configure the BFF base URL. Called by IdentityProvider on mount. */
-export function configureBffClient(baseUrl: string, publishableKey?: string): void {
+export function configureBffClient(
+  baseUrl: string,
+  publishableKey?: string,
+  signInUrl?: string | null,
+): void {
   _baseUrl = baseUrl.replace(/\/$/, '');
   if (publishableKey !== undefined) {
     _publishableKey = publishableKey;
   }
+  if (signInUrl !== undefined) {
+    _signInUrl = signInUrl;
+  }
+}
+
+/** The configured sign-in path, or null when navigation is disabled. */
+export function readSignInUrl(): string | null {
+  return _signInUrl;
 }
 
 /**
@@ -70,8 +89,8 @@ async function handleResponse<T>(res: Response): Promise<T> {
     // Clear the (now-stale) bearer token alongside the cookie redirect — the
     // BFF will issue a fresh one when the user signs in again.
     clearAccessToken();
-    if (typeof window !== 'undefined') {
-      window.location.href = '/sign-in';
+    if (typeof window !== 'undefined' && _signInUrl) {
+      window.location.href = _signInUrl;
     }
     throw new Error('Unauthorized: session expired');
   }

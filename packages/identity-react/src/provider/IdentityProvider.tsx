@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { User, PlatformUser, Organization, MeResponse, OrgAuthPolicy, Membership } from '@wegooli/identity-types';
 import { IdentityContext, IdentityContextValue } from '../context/IdentityContext';
-import { bffClient, clearAccessToken, configureBffClient, readAccessToken } from '../api/bff-client';
+import { bffClient, clearAccessToken, configureBffClient, readAccessToken, readSignInUrl } from '../api/bff-client';
 import { handleOAuthCallback } from '../api/oauth-callback';
 
 export interface AppearanceConfig {
@@ -20,6 +20,17 @@ export interface IdentityProviderProps {
   publishableKey: string;
   /** Optional theme customization */
   appearance?: AppearanceConfig;
+  /**
+   * 세션이 끊겼을 때(401) 또는 로그아웃 후 보낼 경로.
+   *
+   * 소비자 앱마다 로그인 화면 경로가 다르다. 대시보드는 `/sign-in` 이지만
+   * `/login` 을 쓰는 앱도 있다. 값을 주지 않으면 `/sign-in` 으로 이동하므로,
+   * 다른 경로를 쓰는 앱은 반드시 지정해야 한다 (지정하지 않으면 로그아웃이
+   * 404 로 떨어지고, 앱이 자체 세션 쿠키를 정리할 틈도 없이 페이지가 날아간다).
+   *
+   * `null` 을 주면 SDK 가 이동시키지 않는다. 앱이 직접 처리하고 싶을 때 쓴다.
+   */
+  signInUrl?: string | null;
 }
 
 const defaultQueryClient = new QueryClient({
@@ -35,6 +46,7 @@ function IdentityProviderInner({
   children,
   bffBaseUrl = '',
   publishableKey,
+  signInUrl,
 }: IdentityProviderProps): React.ReactElement {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
@@ -47,7 +59,7 @@ function IdentityProviderInner({
   const [mfaPending, setMfaPending] = useState(false);
 
   useEffect(() => {
-    configureBffClient(bffBaseUrl, publishableKey);
+    configureBffClient(bffBaseUrl, publishableKey, signInUrl);
 
     // Single fetch + state writer. Reused on mount, on tab focus, and on the
     // background interval so a force-logout from the dashboard takes effect
@@ -123,7 +135,7 @@ function IdentityProviderInner({
         document.removeEventListener('visibilitychange', onVisibility);
       }
     };
-  }, [bffBaseUrl, publishableKey]);
+  }, [bffBaseUrl, publishableKey, signInUrl]);
 
   // Same-site consumers sign in via HttpOnly cookie and getToken stays null.
   // Cross-site SDK consumers receive a bearer token through the PKCE callback
@@ -140,8 +152,9 @@ function IdentityProviderInner({
     setOrganization(null);
     setMemberships([]);
     setMfaPending(false);
-    if (typeof window !== 'undefined') {
-      window.location.href = '/sign-in';
+    const target = readSignInUrl();
+    if (typeof window !== 'undefined' && target) {
+      window.location.href = target;
     }
   }, []);
 
