@@ -202,6 +202,24 @@ export function SignIn({
   const accentColor = branding?.primaryColor || appearance?.variables?.colorPrimary;
   const textColor = branding?.textColor || undefined;
 
+  // Brand CSS variables. These drive our own primary buttons
+  // (`bg-[var(--brand-primary,…)]`) and headings, so they must be present in
+  // BOTH modes — `bare` only means "no card chrome", not "no branding".
+  const brandStyle: React.CSSProperties | undefined = (accentColor || textColor)
+    ? ({
+        ...(accentColor ? { ['--brand-primary' as string]: accentColor } : {}),
+        ...(textColor ? { ['--brand-text' as string]: textColor, color: textColor } : {}),
+      } as React.CSSProperties)
+    : undefined;
+
+  // In bare mode the consumer supplies the layout, so we must not introduce a
+  // box of our own — `display: contents` carries the variables down the tree
+  // without adding a layout box. Returns the node untouched when unbranded.
+  const withBrand = (node: React.ReactElement): React.ReactElement =>
+    brandStyle
+      ? <div style={{ display: 'contents', ...brandStyle }}>{node}</div>
+      : node;
+
   const inner = (
     <div className="space-y-4" style={{ fontFamily: appearance?.variables?.fontFamily }}>
       {error && (
@@ -369,7 +387,7 @@ export function SignIn({
   // with the MFA challenge UI so the user can complete sign-in. We render
   // bare here so the parent's <Card>/<AuthLayout> stays consistent.
   if (mfaPending) {
-    return bare ? <MFAChallenge bare onSuccess={onSuccess} /> : (
+    return bare ? withBrand(<MFAChallenge bare onSuccess={onSuccess} />) : (
       <div
         className="min-h-[100vh] w-full bg-neutral-50 font-sans flex items-center justify-center px-4 py-12"
       >
@@ -383,7 +401,9 @@ export function SignIn({
   }
 
   if (bare) {
-    return inner;
+    // Consumer owns the card; we still hand down the brand variables so the
+    // buttons inside `inner` are the dashboard's color, not our default.
+    return withBrand(inner);
   }
 
   // Self-contained branded card — what SDK consumers see when dropping <SignIn /> standalone.
@@ -394,12 +414,7 @@ export function SignIn({
   // up (e.g. headings reference `var(--brand-text, …)`). Primary drives
   // buttons / focus rings; text color drives the heading + body copy on the
   // card (falls back to neutral palette when unset).
-  const cardStyle = (accentColor || textColor)
-    ? ({
-        ...(accentColor ? { ['--brand-primary' as string]: accentColor } : {}),
-        ...(textColor ? { ['--brand-text' as string]: textColor, color: textColor } : {}),
-      } as React.CSSProperties)
-    : undefined;
+  const cardStyle = brandStyle;
 
   return (
     <div
