@@ -105,6 +105,16 @@ export function SignUp({
   const logoUrl = branding?.logoUrl || appearance?.logoUrl;
   const accentColor = branding?.primaryColor || appearance?.variables?.colorPrimary;
 
+  // Same rule as SignIn: `bare` drops the card, not the branding. `display:
+  // contents` hands the variables down without adding a layout box.
+  const brandStyle: React.CSSProperties | undefined = accentColor
+    ? ({ ['--brand-primary' as string]: accentColor } as React.CSSProperties)
+    : undefined;
+  const withBrand = (node: React.ReactElement): React.ReactElement =>
+    brandStyle
+      ? <div style={{ display: 'contents', ...brandStyle }}>{node}</div>
+      : node;
+
   const inner = (
     <div className="space-y-4" style={{ fontFamily: appearance?.variables?.fontFamily }}>
       {error && (
@@ -194,12 +204,11 @@ export function SignUp({
   );
 
   if (bare) {
-    return inner;
+    // Consumer owns the card; the brand variables still go down.
+    return withBrand(inner);
   }
 
-  const cardStyle = accentColor
-    ? ({ ['--brand-primary' as string]: accentColor } as React.CSSProperties)
-    : undefined;
+  const cardStyle = brandStyle;
 
   return (
     <div
