@@ -1,6 +1,7 @@
 import type { TokenExchangeRequest, TokenExchangeResponse } from '@wegooli/identity-types';
 import { bffClient, writeAccessToken } from './bff-client';
 import { clearPKCEVerifier, readPKCEVerifier } from './pkce';
+import { promotePendingMethod } from './last-method';
 
 /**
  * Inspect `window.location.search` for a `?code=…` parameter left by the
@@ -46,6 +47,9 @@ export async function handleOAuthCallback(): Promise<boolean> {
     if (resp?.access_token) {
       writeAccessToken(resp.access_token);
     }
+    // The redirect completed, so the method stashed before leaving the page is
+    // now a *completed* sign-in and can be shown as "last used" next time.
+    promotePendingMethod();
     return true;
   } catch {
     // bffClient throws on non-2xx; nothing actionable here. The user appears

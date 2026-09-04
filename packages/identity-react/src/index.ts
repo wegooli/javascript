@@ -65,3 +65,14 @@ export {
   clearPKCEVerifier,
 } from './api/pkce';
 export { handleOAuthCallback } from './api/oauth-callback';
+
+// "Last used" sign-in hint — the SignIn UI marks the remembered method.
+export {
+  readLastMethod,
+  rememberLastMethod,
+  stashPendingMethod,
+  promotePendingMethod,
+  clearLastMethod,
+  oauthMethod,
+} from './api/last-method';
+export type { LastAuthMethod } from './api/last-method';

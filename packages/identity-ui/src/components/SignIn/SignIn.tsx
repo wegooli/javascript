@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { AppearanceConfig } from '../../types/appearance';
 import type { OrgAuthPolicy } from '@wegooli/identity-types';
 import {
@@ -11,6 +11,10 @@ import {
   readBffBaseUrl,
   readPublishableKey,
   generatePKCEChallenge,
+  readLastMethod,
+  rememberLastMethod,
+  stashPendingMethod,
+  oauthMethod,
 } from '@wegooli/identity-react';
 import { Button } from '../../primitives/Button';
 import { Input } from '../../primitives/Input';
@@ -104,6 +108,14 @@ export function SignIn({
       : allowedKinds[0];
   const [identifierKind, setIdentifierKind] = useState<'email' | 'phone' | 'username'>(initialKind);
 
+  // Which method this browser used last time. It lives in the browser only, so
+  // it is read after mount — a server-rendered first paint has no hint, and the
+  // markup can't disagree with what the server produced.
+  const [lastMethod, setLastMethod] = useState<string | null>(null);
+  useEffect(() => {
+    setLastMethod(readLastMethod());
+  }, []);
+
   // The single input value reused across kinds — semantically email or phone
   // depending on identifierKind. Username path isn't a passwordless OTP so we
   // route those through passkey today.
@@ -119,6 +131,7 @@ export function SignIn({
     }
     if (emailMode === 'magic_link') {
       if (!authPolicy.allowMagicLink) return;
+      stashPendingMethod('magic_link');
       await sendMagicLink(email, redirectUrl);
       // Stay on the email step — the inner `magicLinkSentTo` panel takes over.
       return;
@@ -135,8 +148,10 @@ export function SignIn({
     e.preventDefault();
     if (usingPhone) {
       await verifyPhoneOTP(email, otp);
+      rememberLastMethod('phone_otp');
     } else {
       await verifyOTP(email, otp);
+      rememberLastMethod('email_otp');
     }
     onSuccess?.();
   }
@@ -148,6 +163,7 @@ export function SignIn({
     if (passkeyAvailable) {
       try {
         await signInWithPasskey();
+        rememberLastMethod('passkey');
         onSuccess?.();
         return;
       } catch {
@@ -155,6 +171,9 @@ export function SignIn({
         return;
       }
     }
+    // Redirect path: we only know the intent here. It becomes "last used" when
+    // the callback confirms the sign-in actually completed.
+    stashPendingMethod('passkey');
     await signIn('passkey', { redirectUrl, flow });
     onSuccess?.();
   }
@@ -187,10 +206,41 @@ export function SignIn({
     } catch {
       /* fall back to fragment flow */
     }
+    // The page is about to leave. Note which button was pressed; the callback
+    // promotes it to "last used" only if the round trip succeeds, so a
+    // cancelled provider screen leaves no mark.
+    stashPendingMethod(oauthMethod(provider));
     const qs = params.toString();
     const base = `/api/auth/social/${encodeURIComponent(provider)}/start`;
     const bffBase = readBffBaseUrl();
     window.location.href = `${bffBase}${base}${qs ? `?${qs}` : ''}`;
+  }
+
+  /**
+   * "Last used" marker. Sits on the button's top edge so it reads as a note
+   * about that button without stealing the button's own label. Decorative for
+   * sighted users, announced for screen readers via the button's aria-describedby
+   * would need an id per button — the visually-hidden text inside is simpler and
+   * reads in order: "Google. Last used."
+   */
+  function LastUsed({ on }: { on: boolean }): React.ReactElement | null {
+    if (!on) return null;
+    return (
+      <span className="pointer-events-none absolute -top-2 right-3 z-10 rounded-full border border-neutral-200 bg-white px-2 py-0.5 text-[11px] font-medium leading-none text-neutral-500 shadow-sm">
+        Last used
+      </span>
+    );
+  }
+
+  /** Wraps a method button so the marker can sit on its edge. */
+  function Marked({ on, children }: { on: boolean; children: React.ReactNode }): React.ReactElement {
+    if (!on) return <>{children}</>;
+    return (
+      <div className="relative">
+        <LastUsed on />
+        {children}
+      </div>
+    );
   }
 
   const hasUpperMethods = authPolicy.allowPasskey || authPolicy.allowedOauthProviders.length > 0 || customProviders.length > 0;
@@ -229,32 +279,36 @@ export function SignIn({
       )}
 
       {authPolicy.allowPasskey && passkeyAvailable && (
-        <Button onClick={handlePasskey} loading={isLoading} className="w-full" iconRight={<ArrowRightIcon />}>
-          Continue with Passkey
-        </Button>
+        <Marked on={lastMethod === 'passkey'}>
+          <Button onClick={handlePasskey} loading={isLoading} className="w-full" iconRight={<ArrowRightIcon />}>
+            Continue with Passkey
+          </Button>
+        </Marked>
       )}
 
       {(authPolicy.allowedOauthProviders.length > 0 || customProviders.length > 0) && (
         <div className="grid grid-cols-1 gap-2">
           {authPolicy.allowedOauthProviders.map((provider) => (
-            <SocialButton
-              key={provider}
-              provider={provider}
-              onClick={() => void handleOAuth(provider)}
-              disabled={isLoading}
-              className="w-full"
-            />
+            <Marked key={provider} on={lastMethod === oauthMethod(provider)}>
+              <SocialButton
+                provider={provider}
+                onClick={() => void handleOAuth(provider)}
+                disabled={isLoading}
+                className="w-full"
+              />
+            </Marked>
           ))}
           {customProviders.map((p) => (
-            <SocialButton
-              key={p.key}
-              provider={p.key}
-              label={`Continue with ${p.name}`}
-              iconUrl={p.iconUrl}
-              onClick={() => void handleOAuth(p.key)}
-              disabled={isLoading}
-              className="w-full"
-            />
+            <Marked key={p.key} on={lastMethod === oauthMethod(p.key)}>
+              <SocialButton
+                provider={p.key}
+                label={`Continue with ${p.name}`}
+                iconUrl={p.iconUrl}
+                onClick={() => void handleOAuth(p.key)}
+                disabled={isLoading}
+                className="w-full"
+              />
+            </Marked>
           ))}
         </div>
       )}

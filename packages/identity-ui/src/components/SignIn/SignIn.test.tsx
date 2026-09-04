@@ -140,6 +140,52 @@ describe('SignIn', () => {
     expect(container.querySelector('[style*="--brand-primary"]')).toBeNull();
   });
 
+  // 로그인 방법이 여럿이면 "지난번에 뭘로 들어왔더라"를 매번 떠올려야 한다.
+  // 마지막 방법에만 표시가 붙고, 나머지에는 붙지 않아야 쓸모가 있다.
+  describe('지난번에 쓴 방법 표시', () => {
+    const POLICY = {
+      allowPasskey: true,
+      allowEmailOtp: true,
+      allowedOauthProviders: ['google', 'kakao'],
+      ssoEnabled: false,
+    };
+
+    beforeEach(() => {
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+    });
+
+    it('기억된 게 없으면 아무 표시도 없다', () => {
+      renderWithProvider(<SignIn authPolicy={POLICY} />);
+      expect(screen.queryByText('Last used')).toBeNull();
+    });
+
+    it('마지막으로 쓴 소셜 버튼 하나에만 붙는다', async () => {
+      window.localStorage.setItem('wg_last_method', 'oauth:google');
+      const { container } = renderWithProvider(<SignIn authPolicy={POLICY} />);
+      await waitFor(() => expect(screen.getAllByText('Last used')).toHaveLength(1));
+      const marked = container.querySelector('.relative');
+      expect(marked?.textContent).toContain('Google');
+      expect(marked?.textContent).not.toContain('Kakao');
+    });
+
+    it('패스키로 들어왔으면 패스키 버튼에 붙는다', async () => {
+      window.localStorage.setItem('wg_last_method', 'passkey');
+      const { container } = renderWithProvider(<SignIn authPolicy={POLICY} />);
+      await waitFor(() => expect(screen.getAllByText('Last used')).toHaveLength(1));
+      expect(container.querySelector('.relative')?.textContent).toContain('Passkey');
+    });
+
+    // 제공자 이름이 'passkey' 인 커스텀 로그인이 붙어도 내장 패스키와 섞이면 안 된다.
+    it('소셜 제공자와 내장 패스키를 구분한다', async () => {
+      window.localStorage.setItem('wg_last_method', 'oauth:passkey');
+      renderWithProvider(
+        <SignIn authPolicy={{ ...POLICY, allowedOauthProviders: ['passkey'] }} />,
+      );
+      await waitFor(() => expect(screen.getAllByText('Last used')).toHaveLength(1));
+    });
+  });
+
   it('throws error when useAuth used outside provider', () => {
     // useAuth is already mocked at module level; access the real impl via the mock's context throw
     const TestComponent = () => {
