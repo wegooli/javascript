@@ -1,6 +1,6 @@
 {
   "name": "@wegooli/identity-ui",
-  "version": "2.0.1",
+  "version": "3.0.0",
   "description": "Pre-built UI components for platform identity — SignIn, SignUp, UserProfile, OrgSwitcher",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
