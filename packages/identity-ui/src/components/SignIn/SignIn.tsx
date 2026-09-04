@@ -232,6 +232,21 @@ export function SignIn({
     );
   }
 
+  /**
+   * Compact marker for the identifier tabs. A full pill would not fit in a
+   * segmented control, so the remembered tab gets a dot — the pill on the
+   * button below still spells out what it means once the tab is selected.
+   */
+  function LastUsedDot({ on }: { on: boolean }): React.ReactElement | null {
+    if (!on) return null;
+    return (
+      <span
+        aria-label="Last used"
+        className="absolute right-1.5 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-[var(--brand-primary,theme(colors.primary.500))]"
+      />
+    );
+  }
+
   /** Wraps a method button so the marker can sit on its edge. */
   function Marked({ on, children }: { on: boolean; children: React.ReactNode }): React.ReactElement {
     if (!on) return <>{children}</>;
@@ -242,6 +257,20 @@ export function SignIn({
       </div>
     );
   }
+
+  // 이메일·전화 구간은 버튼 하나로 여러 방법을 감당한다. 지금 고른 탭이 어떤
+  // 방법에 해당하는지 계산해, 지난번 방법과 같을 때만 표시를 붙인다.
+  //
+  // 코드로 받든 링크로 받든 사람이 하는 일은 "이메일을 넣는다"로 같아서, 둘을
+  // 하나로 묶어 본다. 표시가 답하는 질문은 "지난번에 구글이었나 이메일이었나"지
+  // "코드였나 링크였나"가 아니다.
+  const emailFamily = ['email_otp', 'magic_link'];
+  const lastWasEmail = lastMethod !== null && emailFamily.includes(lastMethod);
+  const lastWasPhone = lastMethod === 'phone_otp';
+  const identifierMatches = usingPhone ? lastWasPhone : lastWasEmail;
+  // 지난번 방법이 지금 안 보이는 탭에 있으면, 그 탭에 표시를 붙여 데려간다.
+  const emailTabMatches = lastWasEmail && usingPhone;
+  const phoneTabMatches = lastWasPhone && !usingPhone;
 
   const hasUpperMethods = authPolicy.allowPasskey || authPolicy.allowedOauthProviders.length > 0 || customProviders.length > 0;
 
@@ -353,11 +382,12 @@ export function SignIn({
                         setIdentifierKind('email');
                         setEmail('');
                       }}
-                      className={`flex-1 py-1.5 rounded font-medium ${
+                      className={`relative flex-1 py-1.5 rounded font-medium ${
                         identifierKind === 'email' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500'
                       }`}
                     >
                       Email
+                      <LastUsedDot on={emailTabMatches} />
                     </button>
                   )}
                   {allowedKinds.includes('phone') && (
@@ -367,11 +397,12 @@ export function SignIn({
                         setIdentifierKind('phone');
                         setEmail('');
                       }}
-                      className={`flex-1 py-1.5 rounded font-medium ${
+                      className={`relative flex-1 py-1.5 rounded font-medium ${
                         identifierKind === 'phone' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500'
                       }`}
                     >
                       Phone
+                      <LastUsedDot on={phoneTabMatches} />
                     </button>
                   )}
                 </div>
@@ -387,9 +418,11 @@ export function SignIn({
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={usingPhone ? '+82 10 1234 5678' : 'you@example.com'}
               />
-              <Button type="submit" loading={isLoading} disabled={!email} className="w-full" iconRight={<ArrowRightIcon />}>
-                {!usingPhone && emailMode === 'magic_link' ? 'Email me a sign-in link' : 'Continue'}
-              </Button>
+              <Marked on={identifierMatches}>
+                <Button type="submit" loading={isLoading} disabled={!email} className="w-full" iconRight={<ArrowRightIcon />}>
+                  {!usingPhone && emailMode === 'magic_link' ? 'Email me a sign-in link' : 'Continue'}
+                </Button>
+              </Marked>
 
               {/* Magic-link mode switcher only visible when on the email tab AND
                   both methods are enabled — hidden on phone or when only one

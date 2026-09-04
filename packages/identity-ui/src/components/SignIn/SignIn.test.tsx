@@ -184,6 +184,49 @@ describe('SignIn', () => {
       );
       await waitFor(() => expect(screen.getAllByText('Last used')).toHaveLength(1));
     });
+
+    // 이메일로 들어온 사람에게 아무 표시가 없으면, 정작 "지난번에 뭘로 들어왔지"를
+    // 가장 많이 묻는 경우를 놓친다.
+    it('이메일 코드로 들어왔으면 이메일 제출 버튼에 붙는다', async () => {
+      window.localStorage.setItem('wg_last_method', 'email_otp');
+      renderWithProvider(<SignIn authPolicy={POLICY} />);
+      await waitFor(() => expect(screen.getAllByText('Last used')).toHaveLength(1));
+      const marked = screen.getByText('Last used').parentElement;
+      expect(marked?.textContent).toContain('Continue');
+    });
+
+    // 코드로 받든 링크로 받든 사람이 하는 일은 "이메일을 넣는다"로 같다.
+    it('매직링크도 이메일 구간으로 본다', async () => {
+      window.localStorage.setItem('wg_last_method', 'magic_link');
+      renderWithProvider(<SignIn authPolicy={{ ...POLICY, allowMagicLink: true }} />);
+      await waitFor(() => expect(screen.getAllByText('Last used')).toHaveLength(1));
+    });
+
+    it('소셜로 들어왔으면 이메일 버튼에는 붙지 않는다', async () => {
+      window.localStorage.setItem('wg_last_method', 'oauth:google');
+      renderWithProvider(<SignIn authPolicy={POLICY} />);
+      await waitFor(() => expect(screen.getAllByText('Last used')).toHaveLength(1));
+      expect(screen.getByText('Last used').parentElement?.textContent).toContain('Google');
+    });
+
+    // 지난번 방법이 지금 안 보이는 탭에 있으면 그 탭으로 데려가야 한다.
+    it('전화로 들어왔는데 이메일 탭이 열려 있으면 전화 탭에 표시한다', async () => {
+      window.localStorage.setItem('wg_last_method', 'phone_otp');
+      const { container } = renderWithProvider(
+        <SignIn
+          authPolicy={{
+            ...POLICY,
+            allowedIdentifierKinds: ['email', 'phone'],
+            primaryIdentifierKind: 'email',
+          }}
+        />,
+      );
+      await waitFor(() => {
+        const dot = container.querySelector('[aria-label="Last used"]');
+        expect(dot).not.toBeNull();
+        expect(dot?.parentElement?.textContent).toContain('Phone');
+      });
+    });
   });
 
   it('throws error when useAuth used outside provider', () => {
