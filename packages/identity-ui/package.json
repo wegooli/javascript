@@ -30,10 +30,10 @@
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
     "react-dom": "^18.0.0 || ^19.0.0",
-    "@wegooli/identity-react": "^2.0.0"
+    "@wegooli/identity-react": "workspace:^"
   },
   "dependencies": {
-    "@wegooli/identity-types": "1.0.7",
+    "@wegooli/identity-types": "workspace:*",
     "tailwindcss": "^3.4.0"
   },
   "devDependencies": {

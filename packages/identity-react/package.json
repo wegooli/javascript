@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.0.0",
-    "@wegooli/identity-types": "1.0.7"
+    "@wegooli/identity-types": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
