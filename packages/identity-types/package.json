@@ -1,7 +1,7 @@
 {
   "name": "@wegooli/identity-types",
   "version": "1.0.7",
-  "description": "공유 TypeScript 타입 — JWT 클레임, API 응답, ERD 엔티티",
+  "description": "\uacf5\uc720 TypeScript \ud0c0\uc785 \u2014 JWT \ud074\ub808\uc784, API \uc751\ub2f5, ERD \uc5d4\ud2f0\ud2f0",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",

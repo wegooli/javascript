@@ -3,9 +3,18 @@
   "changelog": "@changesets/cli/changelog",
   "commit": false,
   "fixed": [],
-  "linked": [["@wegooli/identity-types", "@wegooli/identity-react", "@wegooli/identity-ui"]],
+  "linked": [
+    [
+      "@wegooli/identity-types",
+      "@wegooli/identity-react",
+      "@wegooli/identity-ui"
+    ]
+  ],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": []
+  "ignore": [],
+  "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
+    "onlyUpdatePeerDependentsWhenOutOfRange": true
+  }
 }
