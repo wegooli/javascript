@@ -1,5 +1,12 @@
 # @wegooli/docs-storybook
 
+## 0.0.9
+
+### Patch Changes
+
+- Updated dependencies [f4d74b1]
+  - @wegooli/identity-ui@2.1.1
+
 ## 0.0.8
 
 ### Patch Changes
