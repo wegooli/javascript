@@ -128,7 +128,7 @@ importers:
   packages/identity-ui:
     dependencies:
       '@wegooli/identity-react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../identity-react
       '@wegooli/identity-types':
         specifier: workspace:*
