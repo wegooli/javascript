@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { SignUpRequest, SignUpResponse } from '@wegooli/identity-types';
 import { bffClient } from '../api/bff-client';
+import { toIdentityError } from '../api/errors';
 
 export interface UseSignUpReturn {
   signUp: (params: SignUpRequest) => Promise<void>;
@@ -25,7 +26,7 @@ export function useSignUp(): UseSignUpReturn {
         window.location.href = response.redirectUrl ?? '/';
       }
     } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
+      const e = toIdentityError(err);
       setError(e);
       throw e;
     } finally {

@@ -55,6 +55,9 @@ export {
   clearAccessToken,
 } from './api/bff-client';
 
+// 오류에 붙은 코드 — identity-ui 가 이걸 보고 사람이 읽을 문장을 고른다.
+export { IdentityError, IdentityErrorCodes, toIdentityError } from './api/errors';
+
 // PKCE Authorization Code flow helpers — used by identity-ui's SignIn / SignUp
 // to attach a `code_challenge` to OAuth start URLs, and by IdentityProvider
 // to redeem the resulting `?code=` for a bearer token.

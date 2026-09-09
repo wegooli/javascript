@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { bffClient, writeAccessToken } from '../api/bff-client';
+import { toIdentityError } from '../api/errors';
 
 export interface UsePhoneOTPReturn {
   send: (phone: string) => Promise<void>;
@@ -23,7 +24,7 @@ export function usePhoneOTP(): UsePhoneOTPReturn {
     try {
       await bffClient.post('/api/auth/phone-otp/send', { phone });
     } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
+      const e = toIdentityError(err);
       setError(e);
       throw e;
     } finally {
@@ -47,7 +48,7 @@ export function usePhoneOTP(): UsePhoneOTPReturn {
         window.location.href = res.redirectUrl;
       }
     } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
+      const e = toIdentityError(err);
       setError(e);
       throw e;
     } finally {

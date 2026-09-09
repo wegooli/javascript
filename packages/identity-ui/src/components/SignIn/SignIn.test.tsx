@@ -53,14 +53,14 @@ describe('SignIn', () => {
     renderWithProvider(
       <SignIn authPolicy={{ allowPasskey: false, allowEmailOtp: true, allowedOauthProviders: [], ssoEnabled: false }} />,
     );
-    expect(screen.getByLabelText(/email address/i)).toBeDefined();
+    expect(screen.getByLabelText('이메일 주소')).toBeDefined();
   });
 
   it('renders passkey button when allowPasskey is true', () => {
     renderWithProvider(
       <SignIn authPolicy={{ allowPasskey: true, allowEmailOtp: false, allowedOauthProviders: [], ssoEnabled: false }} />,
     );
-    expect(screen.getByText(/continue with passkey/i)).toBeDefined();
+    expect(screen.getByText('패스키로 로그인')).toBeDefined();
   });
 
   it('renders OAuth buttons for allowed providers', () => {
@@ -69,15 +69,15 @@ describe('SignIn', () => {
         authPolicy={{ allowPasskey: false, allowEmailOtp: false, allowedOauthProviders: ['google', 'github'], ssoEnabled: false }}
       />,
     );
-    expect(screen.getByText(/continue with google/i)).toBeDefined();
-    expect(screen.getByText(/continue with github/i)).toBeDefined();
+    expect(screen.getByText('Google 계정으로 로그인')).toBeDefined();
+    expect(screen.getByText('GitHub 계정으로 로그인')).toBeDefined();
   });
 
   it('does not render passkey button when allowPasskey is false', () => {
     renderWithProvider(
       <SignIn authPolicy={{ allowPasskey: false, allowEmailOtp: true, allowedOauthProviders: [], ssoEnabled: false }} />,
     );
-    expect(screen.queryByText(/continue with passkey/i)).toBeNull();
+    expect(screen.queryByText('패스키로 로그인')).toBeNull();
   });
 
   it('accepts appearance prop without error', () => {
@@ -98,11 +98,11 @@ describe('SignIn', () => {
     renderWithProvider(
       <SignIn authPolicy={{ allowPasskey: false, allowEmailOtp: true, allowedOauthProviders: [], ssoEnabled: false }} />,
     );
-    const input = screen.getByLabelText(/email address/i);
+    const input = screen.getByLabelText('이메일 주소');
     fireEvent.change(input, { target: { value: 'test@example.com' } });
     fireEvent.submit(input.closest('form')!);
     await waitFor(() => {
-      expect(screen.getByLabelText(/one-time code/i)).toBeDefined();
+      expect(screen.getByLabelText('일회용 코드')).toBeDefined();
     });
   });
 
@@ -157,13 +157,13 @@ describe('SignIn', () => {
 
     it('기억된 게 없으면 아무 표시도 없다', () => {
       renderWithProvider(<SignIn authPolicy={POLICY} />);
-      expect(screen.queryByText('Last used')).toBeNull();
+      expect(screen.queryByText('지난번에 사용')).toBeNull();
     });
 
     it('마지막으로 쓴 소셜 버튼 하나에만 붙는다', async () => {
       window.localStorage.setItem('wg_last_method', 'oauth:google');
       const { container } = renderWithProvider(<SignIn authPolicy={POLICY} />);
-      await waitFor(() => expect(screen.getAllByText('Last used')).toHaveLength(1));
+      await waitFor(() => expect(screen.getAllByText('지난번에 사용')).toHaveLength(1));
       const marked = container.querySelector('.relative');
       expect(marked?.textContent).toContain('Google');
       expect(marked?.textContent).not.toContain('Kakao');
@@ -172,8 +172,8 @@ describe('SignIn', () => {
     it('패스키로 들어왔으면 패스키 버튼에 붙는다', async () => {
       window.localStorage.setItem('wg_last_method', 'passkey');
       const { container } = renderWithProvider(<SignIn authPolicy={POLICY} />);
-      await waitFor(() => expect(screen.getAllByText('Last used')).toHaveLength(1));
-      expect(container.querySelector('.relative')?.textContent).toContain('Passkey');
+      await waitFor(() => expect(screen.getAllByText('지난번에 사용')).toHaveLength(1));
+      expect(container.querySelector('.relative')?.textContent).toContain('패스키');
     });
 
     // 제공자 이름이 'passkey' 인 커스텀 로그인이 붙어도 내장 패스키와 섞이면 안 된다.
@@ -182,7 +182,7 @@ describe('SignIn', () => {
       renderWithProvider(
         <SignIn authPolicy={{ ...POLICY, allowedOauthProviders: ['passkey'] }} />,
       );
-      await waitFor(() => expect(screen.getAllByText('Last used')).toHaveLength(1));
+      await waitFor(() => expect(screen.getAllByText('지난번에 사용')).toHaveLength(1));
     });
 
     // 이메일로 들어온 사람에게 아무 표시가 없으면, 정작 "지난번에 뭘로 들어왔지"를
@@ -190,23 +190,23 @@ describe('SignIn', () => {
     it('이메일 코드로 들어왔으면 이메일 제출 버튼에 붙는다', async () => {
       window.localStorage.setItem('wg_last_method', 'email_otp');
       renderWithProvider(<SignIn authPolicy={POLICY} />);
-      await waitFor(() => expect(screen.getAllByText('Last used')).toHaveLength(1));
-      const marked = screen.getByText('Last used').parentElement;
-      expect(marked?.textContent).toContain('Continue');
+      await waitFor(() => expect(screen.getAllByText('지난번에 사용')).toHaveLength(1));
+      const marked = screen.getByText('지난번에 사용').parentElement;
+      expect(marked?.textContent).toContain('계속');
     });
 
     // 코드로 받든 링크로 받든 사람이 하는 일은 "이메일을 넣는다"로 같다.
     it('매직링크도 이메일 구간으로 본다', async () => {
       window.localStorage.setItem('wg_last_method', 'magic_link');
       renderWithProvider(<SignIn authPolicy={{ ...POLICY, allowMagicLink: true }} />);
-      await waitFor(() => expect(screen.getAllByText('Last used')).toHaveLength(1));
+      await waitFor(() => expect(screen.getAllByText('지난번에 사용')).toHaveLength(1));
     });
 
     it('소셜로 들어왔으면 이메일 버튼에는 붙지 않는다', async () => {
       window.localStorage.setItem('wg_last_method', 'oauth:google');
       renderWithProvider(<SignIn authPolicy={POLICY} />);
-      await waitFor(() => expect(screen.getAllByText('Last used')).toHaveLength(1));
-      expect(screen.getByText('Last used').parentElement?.textContent).toContain('Google');
+      await waitFor(() => expect(screen.getAllByText('지난번에 사용')).toHaveLength(1));
+      expect(screen.getByText('지난번에 사용').parentElement?.textContent).toContain('Google');
     });
 
     // 지난번 방법이 지금 안 보이는 탭에 있으면 그 탭으로 데려가야 한다.
@@ -222,9 +222,9 @@ describe('SignIn', () => {
         />,
       );
       await waitFor(() => {
-        const dot = container.querySelector('[aria-label="Last used"]');
+        const dot = container.querySelector('[aria-label="지난번에 사용"]');
         expect(dot).not.toBeNull();
-        expect(dot?.parentElement?.textContent).toContain('Phone');
+        expect(dot?.parentElement?.textContent).toContain('휴대폰');
       });
     });
   });

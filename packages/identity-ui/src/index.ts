@@ -79,5 +79,28 @@ export { ArrowRightIcon, GithubIcon, GoogleIcon, ProviderInitialIcon } from './p
 // 스코프를 직접 쓰고 싶을 때 (예: 라이브러리 컴포넌트를 감싼 자체 래퍼)
 export { IdentityScope, IDENTITY_SCOPE_CLASS } from './scope';
 
+// 화면 문구 — 언어를 고르거나, 일부 문구만 바꿔 넣을 때 쓴다.
+export {
+  ko as koAuthLabels,
+  en as enAuthLabels,
+  authLocales,
+  DEFAULT_AUTH_LOCALE,
+  resolveLocale,
+  mergeLabels,
+  useAuthLabels,
+  describeError,
+} from './i18n';
+export type {
+  AuthLabels,
+  AuthLocale,
+  PartialAuthLabels,
+  LocalizableProps,
+  CommonLabels,
+  SignInLabels,
+  SignUpLabels,
+  MFALabels,
+  AuthErrorLabels,
+} from './i18n';
+
 // Types
 export type { AppearanceConfig, AppearanceVariables, AppearanceElements } from './types/appearance';
