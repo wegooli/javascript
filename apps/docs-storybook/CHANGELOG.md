@@ -1,5 +1,12 @@
 # @wegooli/docs-storybook
 
+## 0.0.10
+
+### Patch Changes
+
+- Updated dependencies [699d09d]
+  - @wegooli/identity-react@2.1.2
+
 ## 0.0.9
 
 ### Patch Changes
