@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { bffClient } from '../api/bff-client';
+import { toIdentityError } from '../api/errors';
 
 export interface MFAFactor {
   id: string;
@@ -52,7 +53,7 @@ export function useMFA(): UseMFAReturn {
     try {
       return await fn();
     } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
+      const e = toIdentityError(err);
       setError(e);
       throw e;
     } finally {

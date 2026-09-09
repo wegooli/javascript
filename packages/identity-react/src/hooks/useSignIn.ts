@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { SignInRequest, SignInResponse } from '@wegooli/identity-types';
 import { bffClient } from '../api/bff-client';
+import { toIdentityError } from '../api/errors';
 
 export interface UseSignInReturn {
   signIn: (method: SignInRequest['method'], params: Omit<SignInRequest, 'method'>) => Promise<void>;
@@ -32,7 +33,7 @@ export function useSignIn(): UseSignInReturn {
           window.location.href = authUrl;
         }
       } catch (err) {
-        const e = err instanceof Error ? err : new Error(String(err));
+        const e = toIdentityError(err);
         setError(e);
         throw e;
       } finally {

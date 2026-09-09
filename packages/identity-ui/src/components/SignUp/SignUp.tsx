@@ -15,9 +15,12 @@ import { Divider } from '../../primitives/Divider';
 import { SocialButton } from '../../primitives/SocialButton';
 import { ArrowRightIcon } from '../../primitives/icons';
 import { Card } from '../../primitives/Card';
-import { resolveRedirect } from '../SignIn/SignIn';
+import { ErrorBanner } from '../../primitives/ErrorBanner';
+import { resolveRedirect, providerDisplayName } from '../SignIn/SignIn';
+import { useAuthLabels } from '../../i18n';
+import type { LocalizableProps } from '../../i18n/types';
 
-export interface SignUpProps {
+export interface SignUpProps extends LocalizableProps {
   onSuccess?: () => void;
   redirectUrl?: string;
   authPolicy?: OrgAuthPolicy;
@@ -48,11 +51,14 @@ export function SignUp({
   appearance,
   flow,
   bare = false,
+  locale,
+  labels: labelOverrides,
 }: SignUpProps): React.ReactElement {
   const { signIn, isLoading: ssoLoading, error: ssoError } = useSignIn();
   const { send: sendOTP, verify: verifyOTP, isLoading: otpLoading, error: otpError } = useEmailOTP();
   const { authPolicy: contextPolicy, isLoaded: ctxLoaded } = useIdentityContext();
   const authPolicy = authPolicyProp ?? contextPolicy ?? DEFAULT_POLICY;
+  const L = useAuthLabels(locale, labelOverrides, authPolicy);
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'email' | 'otp'>('email');
@@ -101,7 +107,7 @@ export function SignUp({
   const hasUpperMethods = authPolicy.allowPasskey || authPolicy.allowedOauthProviders.length > 0 || customProviders.length > 0;
 
   const branding = authPolicy.branding;
-  const appName = branding?.appName || appearance?.logoAlt || 'Create your account';
+  const appName = branding?.appName || appearance?.logoAlt || L.signUp.title;
   const logoUrl = branding?.logoUrl || appearance?.logoUrl;
   const accentColor = branding?.primaryColor || appearance?.variables?.colorPrimary;
 
@@ -117,15 +123,11 @@ export function SignUp({
 
   const inner = (
     <div className="space-y-4" style={{ fontFamily: appearance?.variables?.fontFamily }}>
-      {error && (
-        <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm border border-red-100">
-          {error.message}
-        </div>
-      )}
+      <ErrorBanner error={error} labels={L} />
 
       {authPolicy.allowPasskey && (
         <Button onClick={handlePasskey} loading={isLoading} className="w-full" iconRight={<ArrowRightIcon />}>
-          Sign up with Passkey
+          {L.signUp.passkey}
         </Button>
       )}
 
@@ -135,6 +137,7 @@ export function SignUp({
             <SocialButton
               key={provider}
               provider={provider}
+              label={L.signUp.continueWithProvider(providerDisplayName(provider))}
               onClick={() => void handleOAuth(provider)}
               disabled={isLoading}
               className="w-full"
@@ -144,7 +147,7 @@ export function SignUp({
             <SocialButton
               key={p.key}
               provider={p.key}
-              label={`Continue with ${p.name}`}
+              label={L.signUp.continueWithProvider(p.name)}
               iconUrl={p.iconUrl}
               onClick={() => void handleOAuth(p.key)}
               disabled={isLoading}
@@ -156,45 +159,45 @@ export function SignUp({
 
       {authPolicy.allowEmailOtp && (
         <>
-          {hasUpperMethods && <Divider label="or" className="my-2" />}
+          {hasUpperMethods && <Divider label={L.common.divider} className="my-2" />}
 
           {step === 'email' ? (
             <form onSubmit={(e) => void handleEmailSubmit(e)} className="space-y-4">
               <Input
-                label="Email address"
+                label={L.common.emailLabel}
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder={L.common.emailPlaceholder}
               />
               <Button type="submit" loading={isLoading} disabled={!email} className="w-full" iconRight={<ArrowRightIcon />}>
-                Continue
+                {L.common.submit}
               </Button>
             </form>
           ) : (
             <form onSubmit={(e) => void handleOtpSubmit(e)} className="space-y-4">
               <p className="text-sm text-neutral-600">
-                Enter the one-time code sent to <strong className="text-neutral-900">{email}</strong>.
+                {L.common.otpSentToEmail(<strong className="text-neutral-900">{email}</strong>)}
               </p>
               <Input
-                label="One-time code"
+                label={L.common.otpLabel}
                 type="text"
                 inputMode="numeric"
                 required
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
-                placeholder="123456"
+                placeholder={L.common.otpPlaceholder}
               />
               <Button type="submit" loading={isLoading} disabled={!otp} className="w-full" iconRight={<ArrowRightIcon />}>
-                Verify Code
+                {L.common.verifyOtp}
               </Button>
               <button
                 type="button"
                 onClick={() => setStep('email')}
                 className="w-full text-sm text-neutral-500 hover:text-neutral-700"
               >
-                Use a different email
+                {L.common.restartEmail}
               </button>
             </form>
           )}
@@ -235,23 +238,28 @@ export function SignUp({
           ) : (
             <>
               <div className="flex flex-col items-center mb-6">
-                <div className="flex items-center gap-2 mb-3">
-                  {logoUrl ? (
-                    <img src={logoUrl} alt={branding?.appName || 'Logo'} className="h-8 w-auto" />
-                  ) : (
-                    <div
-                      className="w-8 h-8 rounded-md flex items-center justify-center text-white text-sm font-semibold"
-                      style={{ backgroundColor: accentColor || '#6c47ff' }}
-                    >
-                      {(branding?.appName || 'A').charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  {branding?.appName && (
-                    <span className="text-base font-semibold text-neutral-900 truncate">{branding.appName}</span>
-                  )}
-                </div>
+                {/* 이름도 로고도 없는 앱에서는 이 줄을 통째로 그리지 않는다.
+                    빈 이름의 첫 글자를 만들려고 'A' 를 끼워 넣으면, 아무 뜻도
+                    없는 동그라미가 제목 위에 남는다. SignIn 과 같은 규칙이다. */}
+                {(logoUrl || branding?.appName) && (
+                  <div className="flex items-center gap-2 mb-3">
+                    {logoUrl ? (
+                      <img src={logoUrl} alt={branding?.appName || 'Logo'} className="h-8 w-auto" />
+                    ) : (
+                      <div
+                        className="w-8 h-8 rounded-md flex items-center justify-center text-white text-sm font-semibold"
+                        style={{ backgroundColor: accentColor || '#6c47ff' }}
+                      >
+                        {(branding?.appName ?? '').charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    {branding?.appName && (
+                      <span className="text-base font-semibold text-neutral-900 truncate">{branding.appName}</span>
+                    )}
+                  </div>
+                )}
                 <h1 className="text-lg font-semibold text-neutral-900">
-                  {appName === branding?.appName ? 'Create your account' : appName}
+                  {appName === branding?.appName ? L.signUp.title : appName}
                 </h1>
               </div>
               {inner}

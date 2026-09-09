@@ -1,3 +1,5 @@
+import { IdentityError, IdentityErrorCodes } from './errors';
+
 let _baseUrl = '';
 let _publishableKey = '';
 
@@ -92,13 +94,49 @@ async function handleResponse<T>(res: Response): Promise<T> {
     if (typeof window !== 'undefined' && _signInUrl) {
       window.location.href = _signInUrl;
     }
-    throw new Error('Unauthorized: session expired');
+    throw new IdentityError('Unauthorized: session expired', {
+      code: IdentityErrorCodes.sessionExpired,
+      status: 401,
+    });
   }
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
-    throw new Error(`BFF request failed (${res.status}): ${text}`);
+    const body = parseErrorBody(text);
+    // message 는 종전 형식 그대로 둔다 — 로그에서 이 문자열을 보던 곳이 있다.
+    // 사람에게 보여 줄 문장은 code 를 보고 identity-ui 가 만든다.
+    throw new IdentityError(`BFF request failed (${res.status}): ${text}`, {
+      code: body.code,
+      status: res.status,
+      details: body.details,
+      retryAfter: body.retryAfter ?? retryAfterHeader(res),
+    });
   }
   return res.json() as Promise<T>;
+}
+
+/**
+ * BFF 는 오류를 `{"error":"invalid_phone","details":"…"}` 로 준다. 본문이
+ * JSON 이 아닐 수도 있으므로(프록시가 낸 HTML 오류 페이지 등) 실패는 조용히
+ * 넘긴다 — 그러면 코드 없는 오류가 되고, 화면은 일반 안내 문장을 쓴다.
+ */
+function parseErrorBody(text: string): { code?: string; details?: string; retryAfter?: number } {
+  try {
+    const j = JSON.parse(text) as Record<string, unknown>;
+    return {
+      code: typeof j.error === 'string' ? j.error : undefined,
+      details: typeof j.details === 'string' ? j.details : undefined,
+      retryAfter: typeof j.retryAfter === 'number' ? j.retryAfter : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+function retryAfterHeader(res: Response): number | undefined {
+  const raw = res.headers?.get?.('Retry-After');
+  if (!raw) return undefined;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) ? n : undefined;
 }
 
 export const bffClient = {

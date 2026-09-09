@@ -1,3 +1,4 @@
+import { IdentityError, IdentityErrorCodes } from './errors';
 /**
  * RFC 7636 PKCE helpers — used when initiating an OAuth flow against the BFF.
  *
@@ -18,7 +19,9 @@ function base64UrlEncode(bytes: Uint8Array): string {
 
 function ensureBrowser(): void {
   if (typeof window === 'undefined' || !window.crypto?.subtle) {
-    throw new Error('PKCE requires the Web Crypto API (browser secure context).');
+    throw new IdentityError('PKCE requires the Web Crypto API (browser secure context).', {
+      code: IdentityErrorCodes.cryptoUnavailable,
+    });
   }
 }
 

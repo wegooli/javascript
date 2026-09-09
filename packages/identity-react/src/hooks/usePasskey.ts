@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { bffClient, writeAccessToken } from '../api/bff-client';
+import { IdentityError, IdentityErrorCodes, toIdentityError } from '../api/errors';
 
 // Browser-side WebAuthn JSON shapes are mostly opaque to us — go-webauthn on
 // the server expects them echoed back as-is. Keeping the typing loose lets us
@@ -65,7 +66,10 @@ export function usePasskey(): UsePasskeyReturn {
     try {
       return await fn();
     } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
+      // 사람이 지문/얼굴 확인 창을 닫으면 브라우저가 DOMException 으로 거절한다.
+      // 그 문장은 브라우저가 만든 것이라 화면에서 우리 말로 바꿀 수 없으므로,
+      // 여기서 코드가 붙은 오류로 바꿔 둔다.
+      const e = toIdentityError(err);
       setError(e);
       throw e;
     } finally {
@@ -76,7 +80,9 @@ export function usePasskey(): UsePasskeyReturn {
   const signInWithPasskey = useCallback(
     () =>
       wrap(async () => {
-        if (!isAvailable) throw new Error('WebAuthn not available in this browser');
+        if (!isAvailable) throw new IdentityError('WebAuthn not available in this browser', {
+          code: IdentityErrorCodes.webauthnUnavailable,
+        });
         const begin = await bffClient.post<{
           options: { publicKey: CredentialAssertionOptions };
           sessionData: WebAuthnSessionData;
@@ -84,7 +90,7 @@ export function usePasskey(): UsePasskeyReturn {
 
         const publicKey = decodeAssertionOptions(begin.options.publicKey);
         const cred = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential | null;
-        if (!cred) throw new Error('Passkey assertion was cancelled');
+        if (!cred) throw new IdentityError('Passkey assertion was cancelled', { code: IdentityErrorCodes.passkeyCancelled });
 
         const credJSON = encodeAssertion(cred);
         const finish = await bffClient.post<{ status: string; redirectUrl?: string; access_token?: string }>(
@@ -105,7 +111,9 @@ export function usePasskey(): UsePasskeyReturn {
   const registerPasskey = useCallback(
     (displayName?: string) =>
       wrap(async () => {
-        if (!isAvailable) throw new Error('WebAuthn not available in this browser');
+        if (!isAvailable) throw new IdentityError('WebAuthn not available in this browser', {
+          code: IdentityErrorCodes.webauthnUnavailable,
+        });
         const begin = await bffClient.post<{
           options: { publicKey: CredentialCreationOptions };
           sessionData: WebAuthnSessionData;
@@ -113,7 +121,7 @@ export function usePasskey(): UsePasskeyReturn {
 
         const publicKey = decodeCreationOptions(begin.options.publicKey);
         const cred = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential | null;
-        if (!cred) throw new Error('Passkey creation was cancelled');
+        if (!cred) throw new IdentityError('Passkey creation was cancelled', { code: IdentityErrorCodes.passkeyCancelled });
 
         const credJSON = encodeAttestation(cred);
         await bffClient.post('/api/auth/webauthn/register/finish', {

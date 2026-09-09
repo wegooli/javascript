@@ -80,7 +80,16 @@ export interface AuthBranding {
   primaryColor: string;
   /** Optional body/heading text color (hex). Empty string = inherit defaults. */
   textColor?: string;
+  /**
+   * Language the SDK's sign-in screens render in for this app. Absent (or an
+   * empty string, which is how the BFF sends "unset") means the SDK default.
+   * A `locale` prop on the component still wins over this.
+   */
+  locale?: AuthLocale | '';
 }
+
+/** Languages the pre-built auth screens ship copy for. */
+export type AuthLocale = 'ko' | 'en';
 
 /** Phase B — which identifier kinds tenant users can sign in with. */
 export type IdentifierKind = 'email' | 'phone' | 'username';

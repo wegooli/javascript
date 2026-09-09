@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { EmailOTPVerifyResponse } from '@wegooli/identity-types';
 import { bffClient, writeAccessToken } from '../api/bff-client';
+import { toIdentityError } from '../api/errors';
 
 export interface UseEmailOTPReturn {
   /** Send a 6-digit code to the given email. */
@@ -28,7 +29,7 @@ export function useEmailOTP(): UseEmailOTPReturn {
     try {
       await bffClient.post('/api/auth/email-otp/send', { email });
     } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
+      const e = toIdentityError(err);
       setError(e);
       throw e;
     } finally {
@@ -51,7 +52,7 @@ export function useEmailOTP(): UseEmailOTPReturn {
         window.location.href = res.redirectUrl;
       }
     } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
+      const e = toIdentityError(err);
       setError(e);
       throw e;
     } finally {

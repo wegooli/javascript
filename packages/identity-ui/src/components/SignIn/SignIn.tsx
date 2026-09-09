@@ -22,9 +22,12 @@ import { Divider } from '../../primitives/Divider';
 import { SocialButton } from '../../primitives/SocialButton';
 import { ArrowRightIcon } from '../../primitives/icons';
 import { Card } from '../../primitives/Card';
+import { ErrorBanner } from '../../primitives/ErrorBanner';
 import { MFAChallenge } from '../MFAChallenge/MFAChallenge';
+import { useAuthLabels } from '../../i18n';
+import type { LocalizableProps } from '../../i18n/types';
 
-export interface SignInProps {
+export interface SignInProps extends LocalizableProps {
   /** Called after successful sign-in (before redirect) */
   onSuccess?: () => void;
   /** Override the post sign-in redirect URL */
@@ -64,6 +67,8 @@ export function SignIn({
   appearance,
   flow,
   bare = false,
+  locale,
+  labels: labelOverrides,
 }: SignInProps): React.ReactElement {
   const { signIn, isLoading: ssoLoading, error: ssoError } = useSignIn();
   const { send: sendOTP, verify: verifyOTP, isLoading: otpLoading, error: otpError } = useEmailOTP();
@@ -83,6 +88,8 @@ export function SignIn({
   } = usePasskey();
   const { authPolicy: contextPolicy, isLoaded: ctxLoaded, mfaPending } = useIdentityContext();
   const authPolicy = authPolicyProp ?? contextPolicy ?? DEFAULT_POLICY;
+  // 문구. prop 으로 넘긴 언어 → 앱 설정에 적힌 언어 → 한국어 순으로 정해진다.
+  const L = useAuthLabels(locale, labelOverrides, authPolicy);
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'email' | 'otp'>('email');
@@ -227,7 +234,7 @@ export function SignIn({
     if (!on) return null;
     return (
       <span className="pointer-events-none absolute -top-2 right-3 z-10 rounded-full border border-neutral-200 bg-white px-2 py-0.5 text-[11px] font-medium leading-none text-neutral-500 shadow-sm">
-        Last used
+        {L.common.lastUsed}
       </span>
     );
   }
@@ -241,7 +248,7 @@ export function SignIn({
     if (!on) return null;
     return (
       <span
-        aria-label="Last used"
+        aria-label={L.common.lastUsed}
         className="absolute right-1.5 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-[var(--brand-primary,theme(colors.primary.500))]"
       />
     );
@@ -276,8 +283,13 @@ export function SignIn({
 
   // Branding from policy (publishable-key driven). Falls back to neutral defaults.
   const branding = authPolicy.branding;
-  const appName = branding?.appName || appearance?.logoAlt || 'Sign in';
+  // 앱 이름과 화면 제목은 다른 것이다. 이름이 없는 앱에서 제목을 이름 자리에
+  // 끌어다 쓰면 "로 / 로그인 / 로그인" 처럼 같은 말이 세 번 나온다 —
+  // 가입 화면은 이미 이름이 있을 때만 그 줄을 그리고 있었고, 여기만 빠져 있었다.
+  const brandName = branding?.appName || appearance?.logoAlt || '';
   const logoUrl = branding?.logoUrl || appearance?.logoUrl;
+  const hasBrandHeader = Boolean(logoUrl || brandName);
+  const appName = brandName || L.signIn.title;
   const accentColor = branding?.primaryColor || appearance?.variables?.colorPrimary;
   const textColor = branding?.textColor || undefined;
 
@@ -301,16 +313,12 @@ export function SignIn({
 
   const inner = (
     <div className="space-y-4" style={{ fontFamily: appearance?.variables?.fontFamily }}>
-      {error && (
-        <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm border border-red-100">
-          {error.message}
-        </div>
-      )}
+      <ErrorBanner error={error} labels={L} />
 
       {authPolicy.allowPasskey && passkeyAvailable && (
         <Marked on={lastMethod === 'passkey'}>
           <Button onClick={handlePasskey} loading={isLoading} className="w-full" iconRight={<ArrowRightIcon />}>
-            Continue with Passkey
+            {L.signIn.passkey}
           </Button>
         </Marked>
       )}
@@ -321,6 +329,7 @@ export function SignIn({
             <Marked key={provider} on={lastMethod === oauthMethod(provider)}>
               <SocialButton
                 provider={provider}
+                label={L.signIn.continueWithProvider(providerDisplayName(provider))}
                 onClick={() => void handleOAuth(provider)}
                 disabled={isLoading}
                 className="w-full"
@@ -331,7 +340,7 @@ export function SignIn({
             <Marked key={p.key} on={lastMethod === oauthMethod(p.key)}>
               <SocialButton
                 provider={p.key}
-                label={`Continue with ${p.name}`}
+                label={L.signIn.continueWithProvider(p.name)}
                 iconUrl={p.iconUrl}
                 onClick={() => void handleOAuth(p.key)}
                 disabled={isLoading}
@@ -344,7 +353,7 @@ export function SignIn({
 
       {(authPolicy.allowEmailOtp || authPolicy.allowMagicLink || allowedKinds.includes('phone')) && (
         <>
-          {hasUpperMethods && <Divider label="or" className="my-2" />}
+          {hasUpperMethods && <Divider label={L.common.divider} className="my-2" />}
 
           {magicLinkSentTo ? (
             // Confirmation panel after a successful magic-link send. We don't
@@ -352,12 +361,11 @@ export function SignIn({
             // them to check their inbox and offer a way back.
             <div className="space-y-3 text-center">
               <div className="text-sm text-neutral-700">
-                Check your inbox — we sent a sign-in link to{' '}
-                <strong className="text-neutral-900">{magicLinkSentTo}</strong>.
+                {L.signIn.magicLinkSent(
+                  <strong className="text-neutral-900">{magicLinkSentTo}</strong>,
+                )}
               </div>
-              <p className="text-xs text-neutral-500">
-                The link expires in 15 minutes and can be used once.
-              </p>
+              <p className="text-xs text-neutral-500">{L.signIn.magicLinkNote}</p>
               <button
                 type="button"
                 onClick={() => {
@@ -366,7 +374,7 @@ export function SignIn({
                 }}
                 className="w-full text-sm text-neutral-500 hover:text-neutral-700"
               >
-                Use a different email
+                {L.signIn.magicLinkUseAnother}
               </button>
             </div>
           ) : step === 'email' ? (
@@ -386,7 +394,7 @@ export function SignIn({
                         identifierKind === 'email' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500'
                       }`}
                     >
-                      Email
+                      {L.common.emailTab}
                       <LastUsedDot on={emailTabMatches} />
                     </button>
                   )}
@@ -401,7 +409,7 @@ export function SignIn({
                         identifierKind === 'phone' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500'
                       }`}
                     >
-                      Phone
+                      {L.common.phoneTab}
                       <LastUsedDot on={phoneTabMatches} />
                     </button>
                   )}
@@ -409,18 +417,18 @@ export function SignIn({
               )}
 
               <Input
-                label={usingPhone ? 'Phone number' : 'Email address'}
+                label={usingPhone ? L.common.phoneLabel : L.common.emailLabel}
                 type={usingPhone ? 'tel' : 'email'}
                 inputMode={usingPhone ? 'tel' : 'email'}
                 autoComplete={usingPhone ? 'tel' : 'email'}
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder={usingPhone ? '+82 10 1234 5678' : 'you@example.com'}
+                placeholder={usingPhone ? L.common.phonePlaceholder : L.common.emailPlaceholder}
               />
               <Marked on={identifierMatches}>
                 <Button type="submit" loading={isLoading} disabled={!email} className="w-full" iconRight={<ArrowRightIcon />}>
-                  {!usingPhone && emailMode === 'magic_link' ? 'Email me a sign-in link' : 'Continue'}
+                  {!usingPhone && emailMode === 'magic_link' ? L.signIn.magicLinkSubmit : L.common.submit}
                 </Button>
               </Marked>
 
@@ -433,35 +441,35 @@ export function SignIn({
                   onClick={() => setEmailMode((m) => (m === 'otp' ? 'magic_link' : 'otp'))}
                   className="w-full text-sm text-neutral-500 hover:text-neutral-700"
                 >
-                  {emailMode === 'otp'
-                    ? 'Email me a sign-in link instead →'
-                    : '← Use a one-time code instead'}
+                  {emailMode === 'otp' ? L.signIn.switchToMagicLink : L.signIn.switchToOtp}
                 </button>
               )}
             </form>
           ) : (
             <form onSubmit={(e) => void handleOtpSubmit(e)} className="space-y-4">
               <p className="text-sm text-neutral-600">
-                Enter the one-time code sent to <strong className="text-neutral-900">{email}</strong>.
+                {(usingPhone ? L.common.otpSentToPhone : L.common.otpSentToEmail)(
+                  <strong className="text-neutral-900">{email}</strong>,
+                )}
               </p>
               <Input
-                label="One-time code"
+                label={L.common.otpLabel}
                 type="text"
                 inputMode="numeric"
                 required
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
-                placeholder="123456"
+                placeholder={L.common.otpPlaceholder}
               />
               <Button type="submit" loading={isLoading} disabled={!otp} className="w-full" iconRight={<ArrowRightIcon />}>
-                Verify Code
+                {L.common.verifyOtp}
               </Button>
               <button
                 type="button"
                 onClick={() => setStep('email')}
                 className="w-full text-sm text-neutral-500 hover:text-neutral-700"
               >
-                Use a different email
+                {usingPhone ? L.common.restartPhone : L.common.restartEmail}
               </button>
             </form>
           )}
@@ -474,13 +482,13 @@ export function SignIn({
   // with the MFA challenge UI so the user can complete sign-in. We render
   // bare here so the parent's <Card>/<AuthLayout> stays consistent.
   if (mfaPending) {
-    return bare ? withBrand(<MFAChallenge bare onSuccess={onSuccess} />) : (
+    return bare ? withBrand(<MFAChallenge bare onSuccess={onSuccess} locale={locale} labels={labelOverrides} />) : (
       <div
         className="min-h-[100vh] w-full bg-neutral-50 font-sans flex items-center justify-center px-4 py-12"
       >
         <div className="w-full max-w-md">
           <Card>
-            <MFAChallenge bare onSuccess={onSuccess} />
+            <MFAChallenge bare onSuccess={onSuccess} locale={locale} labels={labelOverrides} />
           </Card>
         </div>
       </div>
@@ -515,20 +523,24 @@ export function SignIn({
           ) : (
             <>
               <div className="flex flex-col items-center mb-6">
-                <div className="flex items-center gap-2 mb-3">
-                  {logoUrl ? (
-                    <img src={logoUrl} alt={appName} className="h-8 w-auto" />
-                  ) : (
-                    <div
-                      className="w-8 h-8 rounded-md flex items-center justify-center text-white text-sm font-semibold"
-                      style={{ backgroundColor: accentColor || '#6c47ff' }}
-                    >
-                      {appName.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <span className="text-base font-semibold text-neutral-900 truncate">{appName}</span>
-                </div>
-                <h1 className="text-lg font-semibold text-neutral-900">Sign in</h1>
+                {hasBrandHeader && (
+                  <div className="flex items-center gap-2 mb-3">
+                    {logoUrl ? (
+                      <img src={logoUrl} alt={appName} className="h-8 w-auto" />
+                    ) : (
+                      <div
+                        className="w-8 h-8 rounded-md flex items-center justify-center text-white text-sm font-semibold"
+                        style={{ backgroundColor: accentColor || '#6c47ff' }}
+                      >
+                        {appName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    {brandName && (
+                      <span className="text-base font-semibold text-neutral-900 truncate">{brandName}</span>
+                    )}
+                  </div>
+                )}
+                <h1 className="text-lg font-semibold text-neutral-900">{L.signIn.title}</h1>
               </div>
               {inner}
             </>
@@ -537,6 +549,30 @@ export function SignIn({
       </div>
     </div>
   );
+}
+
+/**
+ * 소셜 버튼에 쓸 제공자 이름.
+ *
+ * 정책이 주는 값은 `google` 같은 소문자 키다. 브랜드 이름은 번역하지 않는
+ * 것이 맞으므로(핸드오프 §1 "이름은 표준대로"), 널리 쓰는 표기만 바로잡고
+ * 나머지는 첫 글자만 대문자로 올린다.
+ */
+const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
+  google: 'Google',
+  github: 'GitHub',
+  apple: 'Apple',
+  kakao: 'Kakao',
+  naver: 'Naver',
+  facebook: 'Facebook',
+  microsoft: 'Microsoft',
+};
+
+export function providerDisplayName(provider: string): string {
+  const known = PROVIDER_DISPLAY_NAMES[provider.toLowerCase()];
+  if (known) return known;
+  if (!provider) return '';
+  return provider.charAt(0).toUpperCase() + provider.slice(1);
 }
 
 // resolveRedirect normalizes the redirect URL passed to BFF social-OAuth start.

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { bffClient } from '../api/bff-client';
+import { toIdentityError } from '../api/errors';
 
 export interface UseMagicLinkReturn {
   /**
@@ -43,7 +44,7 @@ export function useMagicLink(): UseMagicLinkReturn {
       });
       setSentTo(email);
     } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
+      const e = toIdentityError(err);
       setError(e);
       throw e;
     } finally {
