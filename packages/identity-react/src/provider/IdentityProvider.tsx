@@ -4,6 +4,7 @@ import type { User, PlatformUser, Organization, MeResponse, OrgAuthPolicy, Membe
 import { IdentityContext, IdentityContextValue } from '../context/IdentityContext';
 import { bffClient, clearAccessToken, configureBffClient, readAccessToken, readSignInUrl } from '../api/bff-client';
 import { handleOAuthCallback } from '../api/oauth-callback';
+import { consumeAccessTokenFragment } from '../api/fragment-token';
 
 export interface AppearanceConfig {
   primaryColor?: string;
@@ -93,6 +94,12 @@ function IdentityProviderInner({
           if (!cancelled && markLoaded) setIsLoaded(true);
         });
     };
+
+    // Redirect-delivered session — magic links and non-PKCE social sign-in
+    // arrive as `#access_token=…` on the consumer's own origin, where the BFF's
+    // cookie cannot follow. Synchronous, so the token is stored before the
+    // /api/auth/me below goes out.
+    consumeAccessTokenFragment();
 
     // PKCE callback redemption — when a `?code=` is present on the URL,
     // exchange it for a bearer token before the first /api/auth/me fetch
