@@ -44,6 +44,15 @@ import { ProfileManager as ProfileManagerBase } from './components/ProfileManage
 export const ProfileManager = withIdentityScope(ProfileManagerBase, 'ProfileManager');
 export type { ProfileManagerProps } from './components/ProfileManager/ProfileManager';
 
+// "지금 무엇을 위임했고 누가 쓰고 있나 / 끄기". 스스로 네트워크를 쓰지 않는다 —
+// Identity 의 위임 API 는 sk_ 비밀 키로 인증하므로 반드시 서버를 거쳐야 한다.
+import { DelegationManager as DelegationManagerBase } from './components/DelegationManager/DelegationManager';
+export const DelegationManager = withIdentityScope(DelegationManagerBase, 'DelegationManager');
+export type {
+  DelegationManagerProps,
+  DelegationSummary,
+} from './components/DelegationManager/DelegationManager';
+
 // Primitives — exported for direct consumption alongside SignIn/SignUp
 import { Button as ButtonBase } from './primitives/Button';
 export const Button = withIdentityScope(ButtonBase, 'Button');

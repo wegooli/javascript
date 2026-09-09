@@ -1,0 +1,56 @@
+{
+  "name": "@wegooli/identity-delegation",
+  "version": "0.1.0",
+  "description": "위임 만들기·거두기·토큰 받기·토큰 검사 — 서버에서 쓰는 라이브러리",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "jose": "^5.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wegooli/javascript.git",
+    "directory": "packages/identity-delegation"
+  },
+  "homepage": "https://github.com/wegooli/javascript/tree/main/packages/identity-delegation#readme",
+  "bugs": "https://github.com/wegooli/javascript/issues",
+  "keywords": [
+    "identity",
+    "delegation",
+    "agent",
+    "oauth",
+    "mcp",
+    "server"
+  ]
+}
