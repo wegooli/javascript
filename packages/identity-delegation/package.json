@@ -1,6 +1,6 @@
 {
   "name": "@wegooli/identity-delegation",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "위임 만들기·거두기·토큰 받기·토큰 검사 — 서버에서 쓰는 라이브러리",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
