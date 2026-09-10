@@ -1,4 +1,6 @@
-import type { User, PlatformUser, Organization, Member, Membership, Role } from './auth';
+import type { User, PlatformUser, Organization, Member, Membership, Role,
+  CustomerOrganization,
+} from './auth';
 
 export interface ApiResponse<T> {
   data: T;
@@ -18,8 +20,24 @@ export interface MeResponse {
   userKind: 'platform' | 'tenant' | null;
   user: User | null;
   platformUser: PlatformUser | null;
+  /** 이 사람이 속한 워크스페이스(개발사 계정). */
+  workspace?: Organization | null;
+  /** @deprecated `workspace` 를 쓰세요. 같은 값입니다. */
   organization: Organization | null;
   memberships?: Membership[];
+  /**
+   * 이 사람이 속한 **고객사** 목록. 앱 사용자에게만 온다.
+   *
+   * 워크스페이스와 다른 층이다 — 위의 `workspace` 는 이 앱을 만든 회사이고,
+   * 이쪽은 이 앱을 쓰는 회사다.
+   */
+  organizations?: CustomerOrganization[];
+  /**
+   * 지금 어느 회사 일을 하고 있는가. **null 이 정상이다** — 회사에 안
+   * 속했거나, 두 곳에 속했는데 아직 고르지 않았거나. 고르지 않은 상태를
+   * "첫 번째 회사" 로 읽으면 아무도 고르지 않은 회사 이름으로 일이 나간다.
+   */
+  activeOrganization?: CustomerOrganization | null;
   /** TRUE when primary auth succeeded but the user must still complete MFA. */
   mfaPending?: boolean;
 }
@@ -176,13 +194,30 @@ export interface EmailOTPVerifyResponse {
 // Org switching (Track 4)
 
 export interface SwitchOrgRequest {
-  organizationId: string;
+  /** 옮겨 갈 워크스페이스. 둘 중 하나만 보내면 된다. */
+  workspaceId?: string;
+  /** @deprecated `workspaceId` 를 쓰세요. */
+  organizationId?: string;
 }
 
 export interface SwitchOrgResponse {
   sessionId: string;
+  workspace: Organization;
+  /** @deprecated `workspace` 를 쓰세요. 같은 값입니다. */
   organization: Organization;
   memberships: Membership[];
+}
+
+// ---------------------------------------------------------------------------
+// 고객사 (3단계) — 앱 사용자가 속한 회사
+
+/** 사람이 지금 어느 회사 일을 하고 있는지 바꾼다. 빈 값이면 "어느 회사도 아님". */
+export interface SwitchCustomerOrganizationRequest {
+  organizationId: string | null;
+}
+
+export interface SwitchCustomerOrganizationResponse {
+  organizationId: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -197,6 +232,9 @@ export interface SendInvitationRequest {
 
 export interface Invitation {
   id: string;
+  /** 초대한 워크스페이스. */
+  workspaceId?: string;
+  /** @deprecated `workspaceId` 를 쓰세요. */
   organizationId: string;
   invitedEmail: string;
   role: InvitationRole;
@@ -230,6 +268,9 @@ export interface CustomProviderSummary {
 /** Full provider detail for dashboard CRUD — secret never returned. */
 export interface CustomProvider {
   id: string;
+  /** 이 제공자가 켜져 있는 배포(제품 × 환경). */
+  instanceId?: string;
+  /** @deprecated `instanceId` 를 쓰세요. */
   organizationId: string;
   key: string;
   name: string;

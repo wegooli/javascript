@@ -5,6 +5,13 @@
 /** 위임장 — "에이전트 A 가 주체 P 를 대신해 무엇까지, 언제까지" */
 export interface Grant {
   id: string;
+  /** 이 위임장이 사는 배포(제품 × 환경). */
+  instanceId: string;
+  /**
+   * @deprecated `instanceId` 를 쓰세요. 층이 하나뿐이던 때 붙은 이름이라
+   * 배포·개발사 계정·고객사 셋을 한 단어로 부르고 있었습니다. 당분간 같은
+   * 값이 두 이름으로 옵니다.
+   */
   organizationId: string;
   agentId: string;
   /** `user` = 우리 로그인 사용자, `external_user` = 고객사가 서명해서 알려준 사람, `organization` = 조직 */
@@ -24,6 +31,9 @@ export interface Grant {
 /** 고객사 인증서버가 서명해서 알려준 사람. 우리 로그인 사용자가 아니다. */
 export interface ExternalPrincipal {
   id: string;
+  /** 이 사람이 등록된 배포(제품 × 환경). */
+  instanceId: string;
+  /** @deprecated `instanceId` 를 쓰세요. */
   organizationId: string;
   issuerDid: string;
   subject: string;
@@ -81,6 +91,22 @@ export interface AgentCaller {
   agentType?: string;
   /** 책임 주체의 이메일. 고객사 진술에서 왔든 우리 표에서 왔든 모양이 같다 */
   email?: string;
+  /** 이 토큰이 나온 배포(제품 × 환경). 토큰의 `org` 클레임. */
+  instanceId?: string;
+  /**
+   * 이 사람이 일하는 **고객사**. 토큰의 `customer_org` 클레임.
+   *
+   * 없을 수 있고, 없는 경우가 둘인데 둘 다 정상이다 — 회사에 안 속했거나,
+   * 두 곳에 속했는데 위임장이 둘 중 어느 쪽 일인지 말하지 않거나. 없으면
+   * 회사 단위로 넓히지 말고 본인 것만 보여 주면 된다. 찍어서 채우면 아무도
+   * 고르지 않은 회사의 것이 보인다.
+   */
+  customerOrganizationId?: string;
+  /**
+   * @deprecated `instanceId` 를 쓰세요. 같은 값이고, 이름만 배포를 가리키지
+   * 못하던 옛 것입니다. **회사를 뜻하지 않습니다** — 회사는
+   * `customerOrganizationId` 입니다.
+   */
   organizationId?: string;
   /** 어느 위임장에서 나온 권한인가. 사고 뒤 "무엇이 허락돼 있었나" 의 근거 */
   grantId: string;

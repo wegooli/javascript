@@ -46,7 +46,15 @@ export function MockProvider({
     userId: mockUser.id,
     user: mockUser,
     platformUser: null,
+    workspace: mockOrg,
     organization: mockOrg,
+    // 가짜 제공자는 고객사에 안 속한 사람을 흉내낸다 — 그게 대부분의 사람의
+    // 상태이고, 회사가 있다고 꾸며 두면 화면이 회사 있는 경우만 그리게 된다.
+    organizations: [],
+    activeOrganization: null,
+    switchOrganization: async () => {
+      // no-op in mock mode
+    },
     memberships: [],
     authPolicy: null,
     mfaPending: false,
