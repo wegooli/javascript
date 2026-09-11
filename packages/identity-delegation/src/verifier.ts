@@ -115,6 +115,10 @@ export class TokenVerifier {
       agentId,
       agentType: act && typeof act.type === 'string' ? act.type : undefined,
       email: typeof payload['email'] === 'string' ? payload['email'] : undefined,
+      instanceId: typeof payload['org'] === 'string' ? payload['org'] : undefined,
+      // 회사는 `org` 가 아니라 이쪽이다. `org` 는 배포를 가리킨다.
+      customerOrganizationId:
+        typeof payload['customer_org'] === 'string' ? payload['customer_org'] : undefined,
       organizationId: typeof payload['org'] === 'string' ? payload['org'] : undefined,
       grantId,
       grantVersion: typeof payload['gv'] === 'number' ? payload['gv'] : undefined,

@@ -18,7 +18,9 @@ export { useUser } from './hooks/useUser';
 export type { UseUserReturn } from './hooks/useUser';
 
 export { useOrganization } from './hooks/useOrganization';
+export { useCustomerOrganization } from './hooks/useCustomerOrganization';
 export type { UseOrganizationReturn } from './hooks/useOrganization';
+export type { UseCustomerOrganizationReturn } from './hooks/useCustomerOrganization';
 
 export { useSignIn } from './hooks/useSignIn';
 export type { UseSignInReturn } from './hooks/useSignIn';

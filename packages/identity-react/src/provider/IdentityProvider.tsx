@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { User, PlatformUser, Organization, MeResponse, OrgAuthPolicy, Membership } from '@wegooli/identity-types';
+import type { User, PlatformUser, Organization, MeResponse, OrgAuthPolicy, Membership,
+  CustomerOrganization,
+} from '@wegooli/identity-types';
 import { IdentityContext, IdentityContextValue } from '../context/IdentityContext';
 import { bffClient, clearAccessToken, configureBffClient, readAccessToken, readSignInUrl } from '../api/bff-client';
 import { handleOAuthCallback } from '../api/oauth-callback';
@@ -55,6 +57,8 @@ function IdentityProviderInner({
   const [user, setUser] = useState<User | null>(null);
   const [platformUser, setPlatformUser] = useState<PlatformUser | null>(null);
   const [organization, setOrganization] = useState<Organization | null>(null);
+  const [organizations, setOrganizations] = useState<CustomerOrganization[]>([]);
+  const [activeOrganization, setActiveOrganization] = useState<CustomerOrganization | null>(null);
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [authPolicy, setAuthPolicy] = useState<OrgAuthPolicy | null>(null);
   const [mfaPending, setMfaPending] = useState(false);
@@ -75,7 +79,11 @@ function IdentityProviderInner({
           setUserKind(data.userKind);
           setUser(data.user);
           setPlatformUser(data.platformUser);
-          setOrganization(data.organization);
+          // 새 이름이 오면 그것을, 아직 옛 이름만 오는 서버면 그것을. 같은
+          // 값이고, 둘 다 없을 때만 null 이다.
+          setOrganization(data.workspace ?? data.organization);
+          setOrganizations(data.organizations ?? []);
+          setActiveOrganization(data.activeOrganization ?? null);
           setMemberships(data.memberships ?? []);
           setMfaPending(Boolean(data.mfaPending));
           setIsSignedIn(data.user !== null || data.platformUser !== null);
@@ -87,6 +95,8 @@ function IdentityProviderInner({
           setUser(null);
           setPlatformUser(null);
           setOrganization(null);
+          setOrganizations([]);
+          setActiveOrganization(null);
           setMemberships([]);
           setMfaPending(false);
         })
@@ -157,12 +167,26 @@ function IdentityProviderInner({
     setUser(null);
     setPlatformUser(null);
     setOrganization(null);
+    setOrganizations([]);
+    setActiveOrganization(null);
     setMemberships([]);
     setMfaPending(false);
     const target = readSignInUrl();
     if (typeof window !== 'undefined' && target) {
       window.location.href = target;
     }
+  }, []);
+
+  // 일하는 고객사를 바꾼다. 서버가 소속을 확인하고, 확인된 뒤에야 화면이
+  // 바뀐다 — 먼저 바꿔 두고 거절당하면 사람은 옮겨 갔다고 믿은 채로 남의
+  // 회사 이름을 달고 다니게 된다.
+  const switchOrganization = useCallback(async (organizationId: string | null) => {
+    await bffClient.post('/api/auth/switch-organization', {
+      organizationId: organizationId ?? '',
+    });
+    const data = await bffClient.get<MeResponse>('/api/auth/me');
+    setOrganizations(data.organizations ?? []);
+    setActiveOrganization(data.activeOrganization ?? null);
   }, []);
 
   const value: IdentityContextValue = {
@@ -172,7 +196,11 @@ function IdentityProviderInner({
     userId: user?.id ?? platformUser?.id ?? null,
     user,
     platformUser,
+    workspace: organization,
     organization,
+    organizations,
+    activeOrganization,
+    switchOrganization,
     memberships,
     authPolicy,
     mfaPending,
