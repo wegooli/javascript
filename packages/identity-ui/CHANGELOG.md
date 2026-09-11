@@ -1,5 +1,12 @@
 # @wegooli/identity-ui
 
+## 2.4.0
+
+### Patch Changes
+
+- Updated dependencies [c78dc8a]
+  - @wegooli/identity-types@2.4.0
+
 ## 2.3.0
 
 ### Minor Changes
