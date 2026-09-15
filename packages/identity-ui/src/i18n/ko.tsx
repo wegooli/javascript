@@ -14,6 +14,7 @@ import type { AuthLabels } from './types';
 export const ko: AuthLabels = {
   common: {
     divider: '또는',
+    registeredDivider: '이미 등록하셨다면',
     emailLabel: '이메일 주소',
     emailPlaceholder: 'you@example.com',
     phoneLabel: '휴대폰 번호',

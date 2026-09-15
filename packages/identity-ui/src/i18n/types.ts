@@ -28,6 +28,12 @@ export interface AuthLabels {
 export interface CommonLabels {
   /** 위쪽 방법들과 이메일 입력 사이의 구분선 글자. */
   divider: string;
+  /**
+   * `methodOrder="email-first"` 일 때, 이메일 아래로 내려간 패스키·소셜 위에
+   * 놓이는 구분선 글자. 「또는」과 다른 말이어야 한다 — 그 수단들은 **한 번
+   * 로그인한 뒤에야** 쓸 수 있어서, 처음 오는 사람에게는 고를 것이 아니다.
+   */
+  registeredDivider: string;
   emailLabel: string;
   emailPlaceholder: string;
   phoneLabel: string;

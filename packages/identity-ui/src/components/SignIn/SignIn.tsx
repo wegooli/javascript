@@ -47,6 +47,20 @@ export interface SignInProps extends LocalizableProps {
    * consumers can drop `<SignIn />` standalone. Set to true when wrapping in AuthLayout.
    */
   bare?: boolean;
+  /**
+   * 로그인 수단을 **어떤 차례로** 보여 줄 것인가.
+   *
+   *   passkey-first (기본)  패스키 · 소셜 → 구분선 → 이메일
+   *   email-first           이메일 → 「이미 등록하셨다면」 → 패스키 · 소셜
+   *
+   * 기본값은 지금까지의 차례 그대로다 — 이 값을 안 주는 앱은 아무것도
+   * 안 바뀐다.
+   *
+   * `email-first` 를 쓰는 앱이 있는 이유: **계정이 초대로만 생기는 서비스**에서는
+   * 처음 오는 사람이 거의 전부 이메일로 들어온다. 패스키는 한 번 로그인한
+   * 뒤에야 만들 수 있으므로, 맨 위의 가장 큰 버튼이 **아직 못 쓰는 수단**이 된다.
+   */
+  methodOrder?: 'passkey-first' | 'email-first';
 }
 
 const DEFAULT_POLICY: OrgAuthPolicy = {
@@ -67,6 +81,7 @@ export function SignIn({
   appearance,
   flow,
   bare = false,
+  methodOrder = 'passkey-first',
   locale,
   labels: labelOverrides,
 }: SignInProps): React.ReactElement {
@@ -311,11 +326,21 @@ export function SignIn({
       ? <div style={{ display: 'contents', ...brandStyle }}>{node}</div>
       : node;
 
-  const inner = (
-    <div className="space-y-4" style={{ fontFamily: appearance?.variables?.fontFamily }}>
-      <ErrorBanner error={error} labels={L} />
+  const emailFirst = methodOrder === 'email-first';
 
-      {authPolicy.allowPasskey && passkeyAvailable && (
+  /**
+   * 패스키 · 소셜 묶음.
+   *
+   * `email-first` 에서는 **이메일 아래**로 내려가고, 둘뿐이면 한 줄에 나란히
+   * 선다 — 아래로 밀린 보조 수단이 세로로 쌓이면 화면이 길어지기만 한다.
+   */
+  const oauthCount = authPolicy.allowedOauthProviders.length + customProviders.length;
+  const passkeyShown = authPolicy.allowPasskey && passkeyAvailable;
+  const sideBySide = emailFirst && passkeyShown && oauthCount === 1;
+
+  const methodButtons = (
+    <div className={sideBySide ? 'grid grid-cols-2 gap-2' : 'space-y-4'}>
+      {passkeyShown && (
         <Marked on={lastMethod === 'passkey'}>
           <Button onClick={handlePasskey} loading={isLoading} className="w-full" iconRight={<ArrowRightIcon />}>
             {L.signIn.passkey}
@@ -323,8 +348,8 @@ export function SignIn({
         </Marked>
       )}
 
-      {(authPolicy.allowedOauthProviders.length > 0 || customProviders.length > 0) && (
-        <div className="grid grid-cols-1 gap-2">
+      {oauthCount > 0 && (
+        <div className={sideBySide ? 'contents' : 'grid grid-cols-1 gap-2'}>
           {authPolicy.allowedOauthProviders.map((provider) => (
             <Marked key={provider} on={lastMethod === oauthMethod(provider)}>
               <SocialButton
@@ -350,10 +375,12 @@ export function SignIn({
           ))}
         </div>
       )}
+    </div>
+  );
 
-      {(authPolicy.allowEmailOtp || authPolicy.allowMagicLink || allowedKinds.includes('phone')) && (
+  const emailBlock = (authPolicy.allowEmailOtp || authPolicy.allowMagicLink || allowedKinds.includes('phone')) && (
         <>
-          {hasUpperMethods && <Divider label={L.common.divider} className="my-2" />}
+          {hasUpperMethods && !emailFirst && <Divider label={L.common.divider} className="my-2" />}
 
           {magicLinkSentTo ? (
             // Confirmation panel after a successful magic-link send. We don't
@@ -473,6 +500,30 @@ export function SignIn({
               </button>
             </form>
           )}
+        </>
+      );
+
+  /**
+   * 차례를 여기서 정한다.
+   *
+   * `email-first` 의 구분선은 「또는」이 아니라 **「이미 등록하셨다면」**이다.
+   * 아래로 내려간 패스키·소셜은 처음 오는 사람이 쓸 수 없는 수단이라, 「또는」
+   * 으로 두면 「둘 중 아무거나」로 읽혀서 눌러 보고 막힌다.
+   */
+  const inner = (
+    <div className="space-y-4" style={{ fontFamily: appearance?.variables?.fontFamily }}>
+      <ErrorBanner error={error} labels={L} />
+
+      {emailFirst ? (
+        <>
+          {emailBlock}
+          {hasUpperMethods && <Divider label={L.common.registeredDivider} className="my-2" />}
+          {methodButtons}
+        </>
+      ) : (
+        <>
+          {methodButtons}
+          {emailBlock}
         </>
       )}
     </div>

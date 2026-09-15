@@ -10,6 +10,7 @@ import type { AuthLabels } from './types';
 export const en: AuthLabels = {
   common: {
     divider: 'or',
+    registeredDivider: 'Already registered',
     emailLabel: 'Email address',
     emailPlaceholder: 'you@example.com',
     phoneLabel: 'Phone number',

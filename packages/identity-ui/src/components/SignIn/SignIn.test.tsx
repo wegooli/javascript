@@ -56,6 +56,42 @@ describe('SignIn', () => {
     expect(screen.getByLabelText('이메일 주소')).toBeDefined();
   });
 
+  /**
+   * 차례를 바꾸는 것은 **보이는 순서**만이 아니라 「처음 오는 사람이 무엇을
+   * 먼저 만나는가」다. 그래서 DOM 안의 실제 앞뒤를 재고, 구분선 글자도 같이 본다.
+   */
+  describe('methodOrder', () => {
+    const policy = {
+      allowPasskey: true,
+      allowEmailOtp: true,
+      allowedOauthProviders: ['google'],
+      ssoEnabled: false,
+    };
+
+    function order() {
+      const email = screen.getByLabelText('이메일 주소');
+      const passkey = screen.getByRole('button', { name: /패스키/ });
+      // compareDocumentPosition: 2 = 뒤엣것이 앞엣것보다 **앞에** 있다
+      return email.compareDocumentPosition(passkey) & Node.DOCUMENT_POSITION_FOLLOWING
+        ? 'email-then-passkey'
+        : 'passkey-then-email';
+    }
+
+    it('기본값은 지금까지의 차례 그대로다 — 패스키가 이메일 위', () => {
+      renderWithProvider(<SignIn authPolicy={policy} />);
+      expect(order()).toBe('passkey-then-email');
+      expect(screen.getByText('또는')).toBeDefined();
+    });
+
+    it('email-first 면 이메일이 먼저고, 구분선이 「이미 등록하셨다면」이다', () => {
+      renderWithProvider(<SignIn authPolicy={policy} methodOrder="email-first" />);
+      expect(order()).toBe('email-then-passkey');
+      expect(screen.getByText('이미 등록하셨다면')).toBeDefined();
+      // 「또는」은 안 나온다 — 아래로 내려간 수단은 「둘 중 아무거나」가 아니다
+      expect(screen.queryByText('또는')).toBeNull();
+    });
+  });
+
   it('renders passkey button when allowPasskey is true', () => {
     renderWithProvider(
       <SignIn authPolicy={{ allowPasskey: true, allowEmailOtp: false, allowedOauthProviders: [], ssoEnabled: false }} />,
