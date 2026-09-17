@@ -25,10 +25,11 @@ export interface UseMagicLinkReturn {
  * authenticated. The verify step happens on the server, so the SDK never
  * sees the token.
  */
-export function useMagicLink(): UseMagicLinkReturn {
+export function useMagicLink(opts?: { intent?: 'sign-in' | 'sign-up' }): UseMagicLinkReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const intent = opts?.intent;
 
   const send = useCallback(async (email: string, redirectUrl?: string): Promise<void> => {
     setIsLoading(true);
@@ -41,6 +42,7 @@ export function useMagicLink(): UseMagicLinkReturn {
       await bffClient.post('/api/auth/magic-link/send', {
         email,
         ...(dest ? { redirectUrl: dest } : {}),
+        ...(intent ? { intent } : {}),
       });
       setSentTo(email);
     } catch (err) {
@@ -50,7 +52,7 @@ export function useMagicLink(): UseMagicLinkReturn {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [intent]);
 
   const reset = useCallback(() => {
     setSentTo(null);
