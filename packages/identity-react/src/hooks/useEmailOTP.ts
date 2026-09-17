@@ -19,15 +19,16 @@ export interface UseEmailOTPReturn {
  * On successful `verify`, the browser is navigated to the BFF-returned redirect URL
  * (typically `/dashboard`).
  */
-export function useEmailOTP(): UseEmailOTPReturn {
+export function useEmailOTP(opts?: { intent?: 'sign-in' | 'sign-up' }): UseEmailOTPReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const intent = opts?.intent;
 
   const send = useCallback(async (email: string): Promise<void> => {
     setIsLoading(true);
     setError(null);
     try {
-      await bffClient.post('/api/auth/email-otp/send', { email });
+      await bffClient.post('/api/auth/email-otp/send', intent ? { email, intent } : { email });
     } catch (err) {
       const e = toIdentityError(err);
       setError(e);
@@ -35,13 +36,16 @@ export function useEmailOTP(): UseEmailOTPReturn {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [intent]);
 
   const verify = useCallback(async (email: string, code: string): Promise<void> => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await bffClient.post<EmailOTPVerifyResponse>('/api/auth/email-otp/verify', { email, code });
+      const res = await bffClient.post<EmailOTPVerifyResponse>(
+        '/api/auth/email-otp/verify',
+        intent ? { email, code, intent } : { email, code },
+      );
       // Tenant flow (publishable_key present) returns access_token so external
       // customer apps can attach Authorization: Bearer to their own backend
       // calls. Platform flow omits it (cookie-only).
@@ -58,7 +62,7 @@ export function useEmailOTP(): UseEmailOTPReturn {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [intent]);
 
   return { send, verify, isLoading, error };
 }

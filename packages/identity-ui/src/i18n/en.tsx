@@ -70,6 +70,8 @@ export const en: AuthLabels = {
       return `Too many attempts. Please try again in ${hours} ${hours === 1 ? 'hour' : 'hours'}.`;
     },
     byCode: {
+      account_not_found: "No account exists for that email. Create one from the sign-up page.",
+      account_exists: 'An account already exists. Please sign in instead.',
       invalid_email: "That email address doesn't look right. Please check it and try again.",
       invalid_phone: 'That phone number does not look right. Include the country code (+82).',
       invalid_body: 'Please check what you entered and try again.',

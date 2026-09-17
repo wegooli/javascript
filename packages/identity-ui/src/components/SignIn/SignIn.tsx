@@ -71,7 +71,9 @@ export function SignIn({
   labels: labelOverrides,
 }: SignInProps): React.ReactElement {
   const { signIn, isLoading: ssoLoading, error: ssoError } = useSignIn();
-  const { send: sendOTP, verify: verifyOTP, isLoading: otpLoading, error: otpError } = useEmailOTP();
+  const { send: sendOTP, verify: verifyOTP, isLoading: otpLoading, error: otpError } = useEmailOTP(
+    flow === 'platform' ? { intent: 'sign-in' } : undefined,
+  );
   const { send: sendPhoneOTP, verify: verifyPhoneOTP, isLoading: phoneOtpLoading, error: phoneOtpError } = usePhoneOTP();
   const {
     send: sendMagicLink,
@@ -200,6 +202,7 @@ export function SignIn({
     if (dest) params.set('redirectUrl', dest);
     const pk = readPublishableKey();
     if (pk) params.set('publishableKey', pk);
+    if (flow === 'platform') params.set('intent', 'sign-in');
     // Attach PKCE challenge so the BFF callback can issue a one-time `?code=`
     // instead of the legacy `#access_token=` fragment. The verifier is stashed
     // in sessionStorage and consumed by IdentityProvider's handleOAuthCallback
