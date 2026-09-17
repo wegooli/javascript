@@ -55,7 +55,9 @@ export function SignUp({
   labels: labelOverrides,
 }: SignUpProps): React.ReactElement {
   const { signIn, isLoading: ssoLoading, error: ssoError } = useSignIn();
-  const { send: sendOTP, verify: verifyOTP, isLoading: otpLoading, error: otpError } = useEmailOTP();
+  const { send: sendOTP, verify: verifyOTP, isLoading: otpLoading, error: otpError } = useEmailOTP(
+    flow === 'platform' ? { intent: 'sign-up' } : undefined,
+  );
   const { authPolicy: contextPolicy, isLoaded: ctxLoaded } = useIdentityContext();
   const authPolicy = authPolicyProp ?? contextPolicy ?? DEFAULT_POLICY;
   const L = useAuthLabels(locale, labelOverrides, authPolicy);
@@ -88,6 +90,7 @@ export function SignUp({
     if (dest) params.set('redirectUrl', dest);
     const pk = readPublishableKey();
     if (pk) params.set('publishableKey', pk);
+    if (flow === 'platform') params.set('intent', 'sign-up');
     // PKCE challenge — IdentityProvider's handleOAuthCallback redeems the
     // resulting `?code=` against POST /api/auth/token. See SignIn.tsx for
     // the full rationale.
