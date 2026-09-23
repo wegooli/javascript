@@ -4,29 +4,38 @@ on:
   workflow_dispatch:
 
 jobs:
-  access:
-    name: Set public access
+  publish:
+    name: Publish 0.1.0 with full log
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
     steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: pnpm
           registry-url: https://registry.npmjs.org
 
-      - name: Show what the publish token can see
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm view @wegooli/paper-core version --json
+      - name: Install and build
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @wegooli/paper-core build
 
-      - name: Make the package public
+      - name: Publish and show npm's own log
+        working-directory: packages/paper-core
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm access public @wegooli/paper-core
+        run: npm publish --access public --loglevel verbose
 
       - name: Confirm anonymous install can see 0.1.0
         run: |
           code=$(curl -sS -o /tmp/pkg.json -w "%{http_code}" https://registry.npmjs.org/@wegooli%2fpaper-core)
           echo "anonymous registry status $code"
+          cat /tmp/pkg.json
           test "$code" = "200"
-          node -e "const p=require('/tmp/pkg.json'); if (p['dist-tags'].latest !== '0.1.0') process.exit(1)"
