@@ -1,6 +1,6 @@
 {
   "name": "@wegooli/paper-client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "계약서 양식 서버에 말하고 자격(위임 토큰 또는 서비스 열쇠)을 붙입니다. 화면은 그리지 않습니다.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
