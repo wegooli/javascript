@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { PaperApiError } from '@wegooli/paper-client';
 
-import { readPdfPages } from '../pdf-pages';
+import { closePdfPages, readPdfPages, usePdfPages } from '../pdf-pages';
 import { fromWire } from '../payload';
-import type { EditorField, PageSize, TemplatePreviewProps } from '../types';
+import type { EditorField, TemplatePreviewProps } from '../types';
 import { ContractPages } from './ContractPages';
 
 function joinClass(...parts: Array<string | undefined>): string {
@@ -13,7 +13,7 @@ function joinClass(...parts: Array<string | undefined>): string {
 export function TemplatePreview({ client, templateId, classNames, pages: pagesProp }: TemplatePreviewProps) {
   const [title, setTitle] = useState('계약서');
   const [fields, setFields] = useState<EditorField[]>([]);
-  const [pages, setPages] = useState<readonly PageSize[]>(pagesProp ?? []);
+  const { pages, show: showPdfPages } = usePdfPages(pagesProp ?? []);
   const [pageIndex, setPageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -23,13 +23,20 @@ export function TemplatePreview({ client, templateId, classNames, pages: pagesPr
     async function load() {
       setLoading(true);
       setLoadError(null);
-      if (pagesProp) setPages(pagesProp);
+      if (pagesProp) showPdfPages(pagesProp, false);
       try {
         const detail = await client.getTemplate(templateId);
         if (cancelled) return;
         setTitle(detail.title);
         setFields(detail.fields.map((field, index) => fromWire(field, index)));
-        if (!pagesProp) setPages(await readPdfPages(await client.getTemplatePdf(templateId)));
+        if (!pagesProp) {
+          const next = await readPdfPages(await client.getTemplatePdf(templateId));
+          if (cancelled) {
+            await closePdfPages(next);
+            return;
+          }
+          showPdfPages(next, true);
+        }
       } catch (error) {
         if (!cancelled) {
           setLoadError(
@@ -44,7 +51,7 @@ export function TemplatePreview({ client, templateId, classNames, pages: pagesPr
     return () => {
       cancelled = true;
     };
-  }, [client, templateId, pagesProp]);
+  }, [client, templateId, pagesProp, showPdfPages]);
 
   return (
     <div className={joinClass('wg-paper', classNames?.root)}>

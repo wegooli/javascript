@@ -10,10 +10,10 @@ import {
 import { PaperApiError } from '@wegooli/paper-client';
 
 import { assessTemplateSave, isGhost } from '../assess';
-import { readPdfPages, thumbnailBlob } from '../pdf-pages';
+import { readPdfPages, thumbnailBlob, usePdfPages, closePdfPages } from '../pdf-pages';
 import { fittedBoxWidthPx, newSignatureField, newTextField } from '../placement';
 import { fromWire, toFieldPayload, toUpdateBody } from '../payload';
-import type { EditorField, PageSize, TemplateEditorProps } from '../types';
+import type { EditorField, TemplateEditorProps } from '../types';
 import { ContractPages } from './ContractPages';
 
 const GHOST_NOTICE =
@@ -42,7 +42,7 @@ export function TemplateEditor({
   const [templateIdState, setTemplateIdState] = useState(templateId);
   const [title, setTitle] = useState(titleProp?.trim() || '계약서');
   const [fields, setFields] = useState<EditorField[]>([]);
-  const [pages, setPages] = useState<readonly PageSize[]>(pagesProp ?? []);
+  const { pages, show: showPdfPages } = usePdfPages(pagesProp ?? []);
   const [pageIndex, setPageIndex] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [systemLocked, setSystemLocked] = useState(false);
@@ -59,7 +59,7 @@ export function TemplateEditor({
       setLoadError(null);
       setUnknownKeys(null);
       setNotice(null);
-      if (pagesProp) setPages(pagesProp);
+      if (pagesProp) showPdfPages(pagesProp, false);
       if (!templateId && !file) {
         setLoading(false);
         return;
@@ -74,14 +74,28 @@ export function TemplateEditor({
           setFields(detail.fields.map((field, index) => fromWire(field, index)));
           setSystemLocked(detail.source === 'SYSTEM');
           setPageIndex(0);
-          if (!pagesProp) setPages(await readPdfPages(await client.getTemplatePdf(templateId)));
+          if (!pagesProp) {
+            const next = await readPdfPages(await client.getTemplatePdf(templateId));
+            if (cancelled) {
+              await closePdfPages(next);
+              return;
+            }
+            showPdfPages(next, true);
+          }
         } else if (file) {
           if (cancelled) return;
           setTemplateIdState(undefined);
           setSystemLocked(false);
           setTitle(titleProp?.trim() || '계약서');
           setFields([]);
-          if (!pagesProp) setPages(await readPdfPages(await file.arrayBuffer()));
+          if (!pagesProp) {
+            const next = await readPdfPages(await file.arrayBuffer());
+            if (cancelled) {
+              await closePdfPages(next);
+              return;
+            }
+            showPdfPages(next, true);
+          }
         }
       } catch (error) {
         if (!cancelled) {
@@ -97,7 +111,7 @@ export function TemplateEditor({
     return () => {
       cancelled = true;
     };
-  }, [client, templateId, file, pagesProp, titleProp]);
+  }, [client, templateId, file, pagesProp, titleProp, showPdfPages]);
 
   const page = pages[pageIndex];
   const selected = fields.find((field) => field.id === selectedId) ?? null;
@@ -234,7 +248,7 @@ export function TemplateEditor({
       setSystemLocked(detail.source === 'SYSTEM');
       setSelectedId(null);
       setUnknownKeys(null);
-      if (!pagesProp) setPages(await readPdfPages(await client.getTemplatePdf(cloned.id)));
+      if (!pagesProp) showPdfPages(await readPdfPages(await client.getTemplatePdf(cloned.id)), true);
     } catch (error) {
       setNotice(error instanceof PaperApiError && error.message ? error.message : '복사하지 못했습니다');
     } finally {
