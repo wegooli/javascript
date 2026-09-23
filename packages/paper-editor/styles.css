@@ -1,0 +1,88 @@
+/* 파트너가 가져오지 않아도 칸 위치는 인라인으로 맞는다. 이 파일은 종이처럼 보이게 하는 선택이다. */
+.wg-paper {
+  --wg-paper-ink: #1c1917;
+  --wg-paper-sheet: #fffdf8;
+  --wg-paper-desk: #efe6d6;
+  color: var(--wg-paper-ink);
+  background: var(--wg-paper-desk);
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  padding: 16px;
+}
+
+.wg-paper h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.wg-paper .wg-paper-lead {
+  margin: 6px 0 0;
+  font-size: 0.95rem;
+}
+
+.wg-paper .wg-paper-toolbar,
+.wg-paper .wg-paper-side {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.wg-paper .wg-paper-side {
+  flex-direction: column;
+  align-items: stretch;
+  max-width: 280px;
+}
+
+.wg-paper button {
+  font: inherit;
+  border: 1px solid #1c1917;
+  background: transparent;
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.wg-paper .wg-paper-primary {
+  background: #1c1917;
+  color: #fffdf8;
+}
+
+.wg-paper .wg-paper-page {
+  position: relative;
+  margin: 16px auto;
+  background: var(--wg-paper-sheet);
+  box-shadow: 0 1px 0 rgba(28, 25, 23, 0.08), 0 12px 32px rgba(28, 25, 23, 0.08);
+}
+
+.wg-paper .wg-paper-box {
+  box-sizing: border-box;
+  border: 1px dashed #1d4ed8;
+  background: rgba(219, 234, 254, 0.55);
+  color: #1e3a8a;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  padding: 2px 4px;
+  overflow: hidden;
+}
+
+.wg-paper .wg-paper-box[data-kind='text'] {
+  border-color: #b45309;
+  background: rgba(254, 243, 199, 0.65);
+  color: #7c2d12;
+}
+
+.wg-paper .wg-paper-box[data-kind='image'] {
+  border-color: #57534e;
+  background: rgba(231, 229, 228, 0.7);
+  color: #44403c;
+}
+
+.wg-paper .wg-paper-alert {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+}
