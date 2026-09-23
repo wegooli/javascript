@@ -1,6 +1,6 @@
 {
   "name": "@wegooli/paper-core",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "description": "칸의 위치, 글자 폭, 이름표를 같은 자로 재는 계산. 종이를 그리거나 화면을 기억하지 않는다.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
