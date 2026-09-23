@@ -1,4 +1,4 @@
-import { DEFAULT_FONT_SIZE_PCT } from '@wegooli/paper-core';
+import { DEFAULT_FONT_SIZE_PCT, normalizeParamKey, validateParamKey } from '@wegooli/paper-core';
 import type { TemplateField, TemplateFieldInput, UpdateTemplateBody } from '@wegooli/paper-client';
 
 import type { EditorField } from './types';
@@ -24,6 +24,14 @@ export function fromWire(field: TemplateField, index = 0): EditorField {
     signerSlot: field.signerSlot && field.signerSlot > 0 ? field.signerSlot : 1,
     inputType: field.inputType ?? null,
   };
+}
+
+/** 서버는 저장된 이름을 다시 정규화하지 않는다. 보낼 때 저장형으로 맞춘다. */
+function storedParamKey(raw: string | null): string | null {
+  const key = raw?.trim() ?? '';
+  if (!key) return null;
+  if (!validateParamKey(key).ok) return key;
+  return normalizeParamKey(key);
 }
 
 export function toFieldPayload(field: EditorField): TemplateFieldInput {
@@ -54,7 +62,7 @@ export function toFieldPayload(field: EditorField): TemplateFieldInput {
       ...(field.textContent != null ? { textContent: field.textContent } : {}),
       fontSize: field.fontSize && field.fontSize > 0 ? field.fontSize : DEFAULT_FONT_SIZE_PCT,
       label: field.label,
-      paramKey: field.paramKey,
+      paramKey: storedParamKey(field.paramKey),
       inputType: field.inputType ?? 'TEXT',
     };
   }

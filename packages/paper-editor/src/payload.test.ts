@@ -46,6 +46,34 @@ describe('저장 본문', () => {
     expect(body.fields?.[1]).toMatchObject({ inputType: 'DATE', fontSize: 2, textContent: '2026-01-01' });
   });
 
+  it('senderName은 저장할 때 sender_name이 된다', () => {
+    const named = fromWire({
+      id: 'who',
+      pageNumber: 1,
+      posX: 0,
+      posY: 0,
+      width: 10,
+      height: 5,
+      type: 'TEXT',
+      textContent: '갑',
+      paramKey: '  senderName  ',
+    });
+    expect(toFieldPayload(named).paramKey).toBe('sender_name');
+
+    const blank = fromWire({
+      id: 'blank',
+      pageNumber: 1,
+      posX: 0,
+      posY: 0,
+      width: 10,
+      height: 5,
+      type: 'TEXT',
+      textContent: '고정',
+      paramKey: '   ',
+    });
+    expect(toFieldPayload(blank).paramKey).toBeNull();
+  });
+
   it('새 글자칸의 글자 크기는 기본 퍼센트이고 14가 아니다', () => {
     const created = newTextField(1, page);
     expect(toFieldPayload(created).fontSize).toBe(DEFAULT_FONT_SIZE_PCT);

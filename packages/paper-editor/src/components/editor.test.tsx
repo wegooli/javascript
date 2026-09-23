@@ -64,6 +64,10 @@ describe('계약서 화면', () => {
       width: `${placed.width}px`,
       height: `${placed.height}px`,
     });
+    fireEvent.pointerDown(box, { clientX: 0, clientY: 0 });
+    fireEvent.pointerCancel(box);
+    fireEvent.pointerUp(box, { clientX: 80, clientY: 40 });
+    expect(box).toHaveStyle({ left: `${placed.x}px`, top: `${placed.y}px` });
   });
 
   it('빈 글자칸은 저장하지 않고, 확인으로 넘어가지 않는다', async () => {
@@ -133,6 +137,45 @@ describe('계약서 화면', () => {
     expect(update).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: '그래도 저장' }));
     await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+  });
+
+  it('확인한 뒤에 이름을 바꾸면 그 확인으로는 저장되지 않는다', async () => {
+    const update = vi.fn().mockResolvedValue({ id: 't1' });
+    const paper = client({
+      getTemplate: vi.fn().mockResolvedValue(
+        detail({
+          fields: [
+            {
+              id: 'rent',
+              pageNumber: 1,
+              posX: 0,
+              posY: 0,
+              width: 10,
+              height: 5,
+              type: 'TEXT',
+              textContent: '',
+              paramKey: 'new_rent',
+            },
+          ],
+        }),
+      ),
+      listParamKeys: vi.fn().mockResolvedValue({
+        keys: [{ key: 'tenant_name', label: '임차인', useCount: 2 }],
+      }),
+      updateTemplate: update,
+    });
+    render(<TemplateEditor client={paper} templateId="t1" pages={pages} />);
+    fireEvent.click(await screen.findByRole('button', { name: '글자칸' }));
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+    expect(await screen.findByText('new_rent')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('보낼 때 채우는 이름'), { target: { value: 'other_name' } });
+    fireEvent.click(screen.getByRole('button', { name: '그래도 저장' }));
+    expect(await screen.findByText('other_name')).toBeInTheDocument();
+    expect(update).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '그래도 저장' }));
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    const body = update.mock.calls[0]?.[1] as { fields: Array<{ paramKey?: string | null }> };
+    expect(body.fields[0]?.paramKey).toBe('other_name');
   });
 
   it('이름 목록을 가져오지 못하면 저장하지 않는다', async () => {

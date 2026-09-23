@@ -174,10 +174,19 @@ export function TemplateEditor({
       setUnknownKeys(null);
       return;
     }
-    if (!result.ok && result.reason === 'confirm' && !confirmedUnknown) {
-      setUnknownKeys(result.unknownKeys);
-      setNotice(null);
-      return;
+    if (!result.ok && result.reason === 'confirm') {
+      const shown = unknownKeys;
+      const next = result.unknownKeys;
+      const sameAsShown =
+        confirmedUnknown &&
+        shown !== null &&
+        shown.length === next.length &&
+        shown.every((name, index) => name === next[index]);
+      if (!sameAsShown) {
+        setUnknownKeys(next);
+        setNotice(null);
+        return;
+      }
     }
     setUnknownKeys(null);
     setBusy(true);

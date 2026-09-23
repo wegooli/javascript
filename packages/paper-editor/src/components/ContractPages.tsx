@@ -152,6 +152,10 @@ function FieldBox({
     event.currentTarget.setPointerCapture?.(event.pointerId);
   }
 
+  function onPointerCancel() {
+    drag.current = null;
+  }
+
   function onPointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
     const start = drag.current;
     drag.current = null;
@@ -174,6 +178,7 @@ function FieldBox({
       onClick={() => onSelect(field.id)}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
     >
       {labelOf(field)}
     </button>
