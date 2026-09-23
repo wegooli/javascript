@@ -1,0 +1,32 @@
+name: Make paper-core public
+
+on:
+  workflow_dispatch:
+
+jobs:
+  access:
+    name: Set public access
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Show what the publish token can see
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm view @wegooli/paper-core version --json
+
+      - name: Make the package public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm access public @wegooli/paper-core
+
+      - name: Confirm anonymous install can see 0.1.0
+        run: |
+          code=$(curl -sS -o /tmp/pkg.json -w "%{http_code}" https://registry.npmjs.org/@wegooli%2fpaper-core)
+          echo "anonymous registry status $code"
+          test "$code" = "200"
+          node -e "const p=require('/tmp/pkg.json'); if (p['dist-tags'].latest !== '0.1.0') process.exit(1)"
