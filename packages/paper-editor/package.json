@@ -1,6 +1,6 @@
 {
   "name": "@wegooli/paper-editor",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "계약서 PDF를 읽고, 그 위에 서명란과 글자칸을 찍는 화면. 파트너 페이지가 직접 그립니다.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
