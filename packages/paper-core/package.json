@@ -1,0 +1,52 @@
+{
+  "name": "@wegooli/paper-core",
+  "version": "0.1.0",
+  "description": "칸의 위치, 글자 폭, 이름표를 같은 자로 재는 계산. 종이를 그리거나 화면을 기억하지 않는다.",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wegooli/javascript.git",
+    "directory": "packages/paper-core"
+  },
+  "homepage": "https://github.com/wegooli/javascript/tree/main/packages/paper-core#readme",
+  "bugs": "https://github.com/wegooli/javascript/issues",
+  "keywords": [
+    "paper",
+    "pdf",
+    "coordinates",
+    "template",
+    "typescript"
+  ]
+}
