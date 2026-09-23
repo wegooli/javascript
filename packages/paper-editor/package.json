@@ -1,0 +1,68 @@
+{
+  "name": "@wegooli/paper-editor",
+  "version": "0.1.0",
+  "description": "계약서 PDF를 읽고, 그 위에 서명란과 글자칸을 찍는 화면. 파트너 페이지가 직접 그립니다.",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./styles.css": "./styles.css"
+  },
+  "files": [
+    "dist",
+    "styles.css"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "dependencies": {
+    "@wegooli/paper-client": "workspace:*",
+    "@wegooli/paper-core": "workspace:*",
+    "pdfjs-dist": "4.10.38"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.0.0",
+    "@testing-library/react": "^16.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "jsdom": "^25.0.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wegooli/javascript.git",
+    "directory": "packages/paper-editor"
+  },
+  "homepage": "https://github.com/wegooli/javascript/tree/main/packages/paper-editor#readme",
+  "bugs": "https://github.com/wegooli/javascript/issues",
+  "keywords": [
+    "paper",
+    "contract",
+    "template",
+    "react"
+  ]
+}
