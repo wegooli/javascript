@@ -168,7 +168,8 @@ describe('계약서 화면', () => {
     fireEvent.click(await screen.findByRole('button', { name: '글자칸' }));
     fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
     expect(await screen.findByText('new_rent')).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('보낼 때 채우는 이름'), { target: { value: 'other_name' } });
+    fireEvent.click(screen.getByRole('button', { name: /고급 · 외부 연동/ }));
+    fireEvent.change(screen.getByLabelText('연동 이름표'), { target: { value: 'other_name' } });
     fireEvent.click(screen.getByRole('button', { name: '그래도 저장' }));
     expect(await screen.findByText('other_name')).toBeInTheDocument();
     expect(update).not.toHaveBeenCalled();
@@ -301,7 +302,7 @@ describe('계약서 화면', () => {
     fireEvent.click(await screen.findByRole('button', { name: '서명칸 놓기' }));
     fireEvent.click(screen.getByRole('button', { name: '글자칸 놓기' }));
     fireEvent.click(screen.getByRole('button', { name: '글자칸' }));
-    fireEvent.change(screen.getByLabelText('양식에 박을 문구'), { target: { value: '월세' } });
+    fireEvent.change(screen.getByLabelText('글자칸 내용'), { target: { value: '월세' } });
     fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
     await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
     const body = update.mock.calls[0]?.[1] as { fields: Array<Record<string, unknown>>; signers?: unknown };
@@ -359,5 +360,70 @@ describe('계약서 화면', () => {
     expect(body.fields[0]).not.toHaveProperty('imageUrl');
     expect(body.fields[1]).toMatchObject({ inputType: 'DATE', fontSize: 2 });
     expect(body).not.toHaveProperty('signers');
+  });
+
+  it('끌어다 놓으면 그 자리에 칸이 생기고, 고른 사람의 색이 된다', async () => {
+    const update = vi.fn().mockResolvedValue({ id: 't1' });
+    const paper = client({ updateTemplate: update });
+    render(<TemplateEditor client={paper} templateId="t1" pages={pages} />);
+    await screen.findByRole('button', { name: '서명칸 놓기' });
+    fireEvent.click(screen.getByRole('button', { name: /한 분 더/ }));
+    fireEvent.click(screen.getByRole('button', { name: '2번 서명자 고르기' }));
+    const pageEl = document.querySelector('.wg-paper-page');
+    expect(pageEl).toBeTruthy();
+    const store = new Map<string, string>([['application/x-field-type', 'SIGNATURE']]);
+    const data = {
+      dropEffect: 'copy',
+      effectAllowed: 'copy',
+      types: ['application/x-field-type'],
+      getData(key: string) {
+        return store.get(key) ?? '';
+      },
+    };
+    const dropEvent = new MouseEvent('drop', { bubbles: true, clientX: 100, clientY: 80 });
+    Object.defineProperty(dropEvent, 'dataTransfer', { value: data });
+    fireEvent(pageEl as Element, dropEvent);
+    const box = await screen.findByRole('button', { name: '서명란' });
+    expect(box).toHaveAttribute('data-signer', '2');
+    expect(box).toHaveStyle({ left: '25px', top: '50px' });
+    expect(box).toHaveTextContent('2번 서명자');
+    fireEvent.change(screen.getByLabelText('2번 자리 이름'), { target: { value: '임차인' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    const body = update.mock.calls[0]?.[1] as {
+      signers?: Array<{ slot: number; role: string }>;
+      fields: Array<{ type?: string; signerSlot?: number }>;
+    };
+    expect(body.signers).toEqual([{ slot: 2, role: '임차인' }]);
+    expect(body.fields.find((field) => field.type === 'SIGNATURE')?.signerSlot).toBe(2);
+  });
+
+  it('글자칸은 누가 채우는지 한 장으로 묻는다', async () => {
+    const paper = client({
+      getTemplate: vi.fn().mockResolvedValue(
+        detail({
+          fields: [
+            {
+              id: 'ghost',
+              pageNumber: 1,
+              posX: 0,
+              posY: 0,
+              width: 10,
+              height: 5,
+              type: 'TEXT',
+              textContent: '',
+              paramKey: null,
+            },
+          ],
+        }),
+      ),
+    });
+    render(<TemplateEditor client={paper} templateId="t1" pages={pages} />);
+    fireEvent.click(await screen.findByRole('button', { name: '글자칸' }));
+    expect(screen.getByRole('heading', { name: '이 칸은 누가 채우나' })).toBeInTheDocument();
+    expect(screen.getByText(/지금은 아무도 채울 수 없는 칸입니다/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '보낼 때 채우게 하기' }));
+    expect(screen.getByText(/보낼 때 채웁니다/)).toBeInTheDocument();
+    expect(screen.getByText(/이름표를 적어 주십시오/)).toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type DragEvent as ReactDragEvent } from 'react';
 import {
   DEFAULT_FONT_SIZE_PCT,
   findDuplicateParamKeys,
@@ -7,14 +7,23 @@ import {
   topLeftToPercentBox,
   validateParamKey,
 } from '@wegooli/paper-core';
-import { PaperApiError } from '@wegooli/paper-client';
+import { PaperApiError, type TemplateDetail, type TemplateSigner } from '@wegooli/paper-client';
 
 import { assessTemplateSave, isGhost } from '../assess';
 import { readPdfPages, thumbnailBlob, usePdfPages, closePdfPages } from '../pdf-pages';
-import { fittedBoxWidthPx, newSignatureField, newTextField } from '../placement';
+import {
+  fittedBoxWidthPx,
+  newSignatureField,
+  newSignatureFieldAt,
+  newTextField,
+  newTextFieldAt,
+} from '../placement';
 import { fromWire, toFieldPayload, toUpdateBody } from '../payload';
+import { displayNames, dropSignaturesBeyond, namedSigners, peopleFrom } from '../signers';
 import type { EditorField, TemplateEditorProps } from '../types';
 import { ContractPages } from './ContractPages';
+import { SignerPeople } from './SignerPeople';
+import { RequiredToggle, WhoFills } from './WhoFills';
 
 const GHOST_NOTICE =
   '이 글자칸은 비어 있어 저장할 수 없습니다. 문구를 적거나, 보낼 때 채우는 이름을 붙이세요.';
@@ -27,26 +36,6 @@ const DUPLICATE_NOTICE = '같은 이름이 다른 칸에도 있습니다. 두 �
 
 function joinClass(...parts: Array<string | undefined>): string {
   return parts.filter(Boolean).join(' ');
-}
-
-function RequiredToggle({
-  field,
-  onChange,
-}: {
-  field: EditorField;
-  onChange: (required: boolean) => void;
-}) {
-  return (
-    <label className="wg-paper-check">
-      <input
-        type="checkbox"
-        checked={field.required}
-        onChange={(event) => onChange(event.target.checked)}
-      />
-      필수 입력
-      <span>서명하는 사람이 반드시 채워야 합니다. 끄면 비워도 됩니다.</span>
-    </label>
-  );
 }
 
 function nextFillName(fields: readonly EditorField[]): string {
@@ -78,7 +67,33 @@ export function TemplateEditor({
   const [notice, setNotice] = useState<string | null>(null);
   const [unknownKeys, setUnknownKeys] = useState<string[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [signerCount, setSignerCount] = useState(1);
+  const [activeSigner, setActiveSigner] = useState(0);
+  const [roles, setRoles] = useState<Record<number, string>>({});
+  const [signersDirty, setSignersDirty] = useState(false);
+  const [knownKeys, setKnownKeys] = useState<readonly { key: string; label: string | null }[] | null>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
+  const draggedTool = useRef(false);
+
+  function adopt(detail: TemplateDetail) {
+    const nextFields = detail.fields.map((field, index) => fromWire(field, index));
+    const people = peopleFrom(detail.signers, nextFields);
+    setTemplateIdState(detail.id);
+    setTitle(detail.title);
+    setFields(nextFields);
+    setSystemLocked(detail.source === 'SYSTEM');
+    setSignerCount(people.count);
+    setRoles(people.roles);
+    setSignersDirty(false);
+    setActiveSigner((current) => Math.min(current, people.count - 1));
+  }
+
+  function savedSigners(): { signers: TemplateSigner[] } | Record<string, never> {
+    if (!signersDirty) return {};
+    const signers = namedSigners(signerCount, roles);
+    if (signers.length === 0) return {};
+    return { signers };
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -96,10 +111,7 @@ export function TemplateEditor({
         if (templateId) {
           const detail = await client.getTemplate(templateId);
           if (cancelled) return;
-          setTemplateIdState(detail.id);
-          setTitle(detail.title);
-          setFields(detail.fields.map((field, index) => fromWire(field, index)));
-          setSystemLocked(detail.source === 'SYSTEM');
+          adopt(detail);
           setPageIndex(0);
           if (!pagesProp) {
             const next = await readPdfPages(await client.getTemplatePdf(templateId));
@@ -115,6 +127,10 @@ export function TemplateEditor({
           setSystemLocked(false);
           setTitle(titleProp?.trim() || '계약서');
           setFields([]);
+          setSignerCount(1);
+          setRoles({});
+          setSignersDirty(false);
+          setActiveSigner(0);
           if (!pagesProp) {
             const next = await readPdfPages(await file.arrayBuffer());
             if (cancelled) {
@@ -140,6 +156,25 @@ export function TemplateEditor({
     };
   }, [client, templateId, file, pagesProp, titleProp, showPdfPages]);
 
+  useEffect(() => {
+    if (expectedParamKeys) {
+      setKnownKeys(expectedParamKeys.map((key) => ({ key, label: null })));
+      return;
+    }
+    let cancelled = false;
+    void client.listParamKeys().then(
+      (listed) => {
+        if (!cancelled) setKnownKeys(listed.keys.map((entry) => ({ key: entry.key, label: entry.label })));
+      },
+      () => {
+        if (!cancelled) setKnownKeys([]);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [client, expectedParamKeys]);
+
   const page = pages[pageIndex];
   const selected = fields.find((field) => field.id === selectedId) ?? null;
   const duplicates = findDuplicateParamKeys(fields.map((field) => (field.type === 'TEXT' ? field.paramKey : null)));
@@ -147,6 +182,53 @@ export function TemplateEditor({
 
   function patchField(id: string, patch: Partial<EditorField>) {
     setFields((current) => current.map((field) => (field.id === id ? { ...field, ...patch } : field)));
+  }
+
+  function changeField(id: string, patch: Partial<EditorField>) {
+    if (typeof patch.textContent === 'string' && Object.keys(patch).length === 1) {
+      const field = fields.find((item) => item.id === id);
+      if (field?.type === 'TEXT') {
+        writeText(field, patch.textContent);
+        return;
+      }
+    }
+    patchField(id, patch);
+  }
+
+  function addField(type: 'SIGNATURE' | 'TEXT', at?: { x: number; y: number }) {
+    if (!page) return;
+    const slot = activeSigner + 1;
+    const created =
+      type === 'SIGNATURE'
+        ? at
+          ? newSignatureFieldAt(pageIndex + 1, page, at.x, at.y, slot)
+          : newSignatureField(pageIndex + 1, page, slot)
+        : at
+          ? newTextFieldAt(pageIndex + 1, page, at.x, at.y)
+          : newTextField(pageIndex + 1, page);
+    setFields((current) => [...current, created]);
+    setSelectedId(created.id);
+  }
+
+  function onToolDragStart(event: ReactDragEvent<HTMLButtonElement>, type: 'SIGNATURE' | 'TEXT') {
+    draggedTool.current = true;
+    event.dataTransfer.setData('application/x-field-type', type);
+    event.dataTransfer.effectAllowed = 'copy';
+  }
+
+  function onToolClick(type: 'SIGNATURE' | 'TEXT') {
+    if (draggedTool.current) {
+      draggedTool.current = false;
+      return;
+    }
+    addField(type);
+  }
+
+  function changeSignerCount(next: number) {
+    setSignerCount(next);
+    setActiveSigner((current) => Math.min(current, next - 1));
+    setSignersDirty(true);
+    setFields((current) => dropSignaturesBeyond(current, next));
   }
 
   function writeText(field: EditorField, text: string) {
@@ -233,8 +315,13 @@ export function TemplateEditor({
     setBusy(true);
     try {
       const thumbnail = await thumbnailBlob(pages);
+      const signers = savedSigners();
       if (templateIdState) {
-        const saved = await client.updateTemplate(templateIdState, toUpdateBody(fields, { title }));
+        const saved = await client.updateTemplate(templateIdState, {
+          ...toUpdateBody(fields, { title }),
+          ...signers,
+        });
+        setSignersDirty(false);
         onSaved?.(saved.id);
       } else if (file) {
         const saved = await client.createTemplate({
@@ -242,8 +329,10 @@ export function TemplateEditor({
           title: title.trim() || '계약서',
           fields: fields.map(toFieldPayload),
           ...(thumbnail ? { thumbnail } : {}),
+          ...signers,
         });
         setTemplateIdState(saved.id);
+        setSignersDirty(false);
         onSaved?.(saved.id);
       } else {
         setNotice('계약서를 열어 주세요.');
@@ -269,10 +358,7 @@ export function TemplateEditor({
     try {
       const cloned = await client.cloneTemplate(templateIdState);
       const detail = await client.getTemplate(cloned.id);
-      setTemplateIdState(detail.id);
-      setTitle(detail.title);
-      setFields(detail.fields.map((field, index) => fromWire(field, index)));
-      setSystemLocked(detail.source === 'SYSTEM');
+      adopt(detail);
       setSelectedId(null);
       setUnknownKeys(null);
       if (!pagesProp) showPdfPages(await readPdfPages(await client.getTemplatePdf(cloned.id)), true);
@@ -286,6 +372,11 @@ export function TemplateEditor({
   const alertText = notice ?? (ghostCount > 0 ? GHOST_NOTICE : null);
   const selectedKey = selected?.type === 'TEXT' ? (selected.paramKey?.trim() ?? '') : '';
   const selectedKeyOk = selectedKey !== '' && validateParamKey(selectedKey).ok;
+  const selectedDuplicate = selectedKeyOk && duplicates.includes(normalizeParamKey(selectedKey));
+  const names = displayNames(signerCount, roles);
+  const signatureCount = fields.filter((field) => field.type === 'SIGNATURE').length;
+  const imageCount = fields.filter((field) => field.type === 'IMAGE').length;
+  const textCount = fields.filter((field) => field.type === 'TEXT').length;
 
   return (
     <div className={joinClass('wg-paper', classNames?.root)}>
@@ -300,122 +391,182 @@ export function TemplateEditor({
         </p>
       )}
       {!loading && page && (
-        <>
+        <div className="wg-paper-work">
           {!systemLocked && (
-            <div className={joinClass('wg-paper-toolbar', classNames?.toolbar)}>
-              <p className="wg-paper-lead">칸을 계약서 위로 끌어다 놓으십시오. 글자칸은 그 자리에서 글을 적을 수 있습니다.</p>
-              <button type="button" onClick={() => setFields((current) => [...current, newSignatureField(pageIndex + 1, page)])}>
-                서명칸 놓기
-              </button>
-              <button type="button" onClick={() => setFields((current) => [...current, newTextField(pageIndex + 1, page)])}>
-                글자칸 놓기
-              </button>
-              <button
-                type="button"
-                className={joinClass('wg-paper-primary', classNames?.primaryButton)}
-                disabled={busy}
-                onClick={() => void handleSave(false)}
-              >
-                저장하기
-              </button>
-            </div>
+            <SignerPeople
+              count={signerCount}
+              active={activeSigner}
+              roles={roles}
+              fields={fields}
+              onCount={changeSignerCount}
+              onActive={setActiveSigner}
+              onRole={(slot, role) => {
+                setRoles((current) => ({ ...current, [slot]: role }));
+                setSignersDirty(true);
+              }}
+            />
           )}
-          <ContractPages
-            title={title}
-            pages={pages}
-            pageIndex={pageIndex}
-            fields={fields}
-            readOnly={systemLocked}
-            selectedId={selectedId}
-            classNames={classNames}
-            onSelect={setSelectedId}
-            onChangeField={patchField}
-            onDelete={(id) => {
-              setFields((current) => current.filter((field) => field.id !== id));
-              setSelectedId((current) => (current === id ? null : current));
-            }}
-            onPrev={() => setPageIndex((index) => Math.max(0, index - 1))}
-            onNext={() => setPageIndex((index) => Math.min(pages.length - 1, index + 1))}
-          />
-          {systemLocked && (
-            <div className="wg-paper-toolbar">
-              <p>{SYSTEM_NOTICE}</p>
-              <button type="button" className="wg-paper-primary" disabled={busy} onClick={() => void handleClone()}>
-                우리 양식으로 복사한 뒤 고치기
-              </button>
-            </div>
-          )}
-          {duplicates.length > 0 && <p>{DUPLICATE_NOTICE}</p>}
-          {alertText && (
-            <p role="alert" className="wg-paper-alert">
-              {alertText}
-            </p>
-          )}
-          {unknownKeys && (
-            <div role="alertdialog" aria-label="아직 쓰지 않은 이름">
-              <p>{CONFIRM_NOTICE}</p>
-              <ul>
-                {unknownKeys.map((key) => (
-                  <li key={key}>{key}</li>
-                ))}
-              </ul>
-              <button type="button" disabled={busy} onClick={() => void handleSave(true)}>
-                그래도 저장
-              </button>
-              <button type="button" onClick={() => setUnknownKeys(null)}>
-                돌아가기
-              </button>
-            </div>
-          )}
-          {selected && !systemLocked && selected.type === 'TEXT' && (
-            <div className={joinClass('wg-paper-side', classNames?.sidePanel)}>
-              <RequiredToggle field={selected} onChange={(required) => patchField(selected.id, { required })} />
-              <label>
-                화면에 보일 이름
-                <input
-                  value={selected.label ?? ''}
-                  onChange={(event) => patchField(selected.id, { label: event.target.value || null })}
+          <div>
+            {!systemLocked && (
+              <div className={joinClass('wg-paper-toolbar', classNames?.toolbar)}>
+                <p className="wg-paper-lead">
+                  칸을 계약서 위로 끌어다 놓아 주십시오. 손으로 쓰는 기기에서는 버튼을 누르면 가운데에 놓입니다.
+                </p>
+                <button
+                  type="button"
+                  draggable
+                  onDragStart={(event) => onToolDragStart(event, 'SIGNATURE')}
+                  onDragEnd={() => {
+                    window.setTimeout(() => {
+                      draggedTool.current = false;
+                    }, 0);
+                  }}
+                  onClick={() => onToolClick('SIGNATURE')}
+                >
+                  서명칸 놓기
+                </button>
+                <button
+                  type="button"
+                  draggable
+                  onDragStart={(event) => onToolDragStart(event, 'TEXT')}
+                  onDragEnd={() => {
+                    window.setTimeout(() => {
+                      draggedTool.current = false;
+                    }, 0);
+                  }}
+                  onClick={() => onToolClick('TEXT')}
+                >
+                  글자칸 놓기
+                </button>
+                <button
+                  type="button"
+                  className={joinClass('wg-paper-primary', classNames?.primaryButton)}
+                  disabled={busy}
+                  onClick={() => void handleSave(false)}
+                >
+                  저장하기
+                </button>
+              </div>
+            )}
+            <ContractPages
+              title={title}
+              pages={pages}
+              pageIndex={pageIndex}
+              fields={fields}
+              readOnly={systemLocked}
+              selectedId={selectedId}
+              classNames={classNames}
+              signerNames={names}
+              onPlace={(type, x, y) => addField(type, { x, y })}
+              onSelect={setSelectedId}
+              onChangeField={changeField}
+              onDelete={(id) => {
+                setFields((current) => current.filter((field) => field.id !== id));
+                setSelectedId((current) => (current === id ? null : current));
+              }}
+              onPrev={() => setPageIndex((index) => Math.max(0, index - 1))}
+              onNext={() => setPageIndex((index) => Math.min(pages.length - 1, index + 1))}
+            />
+            {!systemLocked && (
+              <p className="wg-paper-hint">
+                왼쪽에서 사람을 고르고, 계약서 위에 그분의 서명칸을 끌어다 놓아 주십시오. 칸마다 색이 그분의 색입니다.
+              </p>
+            )}
+            {fields.length > 0 && (
+              <p className="wg-paper-tally">
+                서명 {signatureCount}개
+                {imageCount > 0 ? ` · 이미지 ${imageCount}개` : ''}
+                {textCount > 0 ? ` · 텍스트 ${textCount}개` : ''} 배치됨
+                {ghostCount > 0 && <span className="wg-paper-ghost"> · 채울 수 없는 칸 {ghostCount}개</span>}
+              </p>
+            )}
+            {systemLocked && (
+              <div className="wg-paper-toolbar">
+                <p>{SYSTEM_NOTICE}</p>
+                <button type="button" className="wg-paper-primary" disabled={busy} onClick={() => void handleClone()}>
+                  우리 양식으로 복사한 뒤 고치기
+                </button>
+              </div>
+            )}
+            {duplicates.length > 0 && <p>{DUPLICATE_NOTICE}</p>}
+            {alertText && (
+              <p role="alert" className="wg-paper-alert">
+                {alertText}
+              </p>
+            )}
+            {unknownKeys && (
+              <div role="alertdialog" aria-label="아직 쓰지 않은 이름">
+                <p>{CONFIRM_NOTICE}</p>
+                <ul>
+                  {unknownKeys.map((key) => (
+                    <li key={key}>{key}</li>
+                  ))}
+                </ul>
+                <button type="button" disabled={busy} onClick={() => void handleSave(true)}>
+                  그래도 저장
+                </button>
+                <button type="button" onClick={() => setUnknownKeys(null)}>
+                  돌아가기
+                </button>
+              </div>
+            )}
+            {!systemLocked && !selected && textCount > 0 && (
+              <p className="wg-paper-hint">
+                글자칸을 누르면 이름을 붙일 수 있습니다. 이름을 붙여 두면 이 양식으로 보낼 때 그 이름으로 값을
+                물어봅니다.
+              </p>
+            )}
+            {selected && !systemLocked && selected.type === 'TEXT' && (
+              <WhoFills
+                  key={selected.id}
+                  className={classNames?.sidePanel}
+                  field={selected}
+                  fields={fields}
+                  knownKeys={knownKeys}
+                  duplicate={selectedDuplicate}
+                  onPatch={(patch) => patchField(selected.id, patch)}
+                  onAskSender={() => patchField(selected.id, { paramKey: nextFillName(fields) })}
+                  onDelete={() => {
+                    setFields((current) => current.filter((field) => field.id !== selected.id));
+                    setSelectedId(null);
+                  }}
                 />
-              </label>
-              <label>
-                양식에 박을 문구
-                <textarea value={selected.textContent ?? ''} onChange={(event) => writeText(selected, event.target.value)} />
-              </label>
-              <label>
-                보낼 때 채우는 이름
-                <input
-                  value={selected.paramKey ?? ''}
-                  onChange={(event) => patchField(selected.id, { paramKey: event.target.value || null })}
-                />
-              </label>
-              {!selected.paramKey?.trim() && !selected.textContent?.trim() && (
-                <p>지금은 아무도 채울 수 없는 칸입니다. 문구를 적거나, 보낼 때 채우는 칸으로 바꾸세요.</p>
-              )}
-              <button
-                type="button"
-                onClick={() => patchField(selected.id, { paramKey: nextFillName(fields) })}
-              >
-                보낼 때 채우게 하기
-              </button>
-              {selectedKey !== '' && !selectedKeyOk && <p>{FORMAT_NOTICE}</p>}
-              {selectedKeyOk && normalizeParamKey(selectedKey) !== selectedKey && (
-                <p>저장하면 {normalizeParamKey(selectedKey)} 로 맞춰집니다.</p>
-              )}
-              <button type="button" onClick={() => setFields((current) => current.filter((field) => field.id !== selected.id))}>
-                이 칸 지우기
-              </button>
-            </div>
-          )}
-          {selected && !systemLocked && selected.type === 'SIGNATURE' && (
-            <div className="wg-paper-side">
-              <RequiredToggle field={selected} onChange={(required) => patchField(selected.id, { required })} />
-              <button type="button" onClick={() => setFields((current) => current.filter((field) => field.id !== selected.id))}>
-                이 칸 지우기
-              </button>
-            </div>
-          )}
-          {selected && selected.type === 'IMAGE' && <p>이 그림은 그대로 저장됩니다.</p>}
-        </>
+            )}
+            {selected && !systemLocked && selected.type === 'SIGNATURE' && (
+              <div className="wg-paper-side">
+                <RequiredToggle field={selected} onChange={(required) => patchField(selected.id, { required })} />
+                {signerCount > 1 && (
+                  <div>
+                    <p className="wg-paper-note">이 서명은 누구 것인가요</p>
+                    <div className="wg-paper-toolbar">
+                      {names.map((name, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          aria-pressed={(selected.signerSlot || 1) === index + 1}
+                          aria-label={`${name} 서명으로`}
+                          onClick={() => patchField(selected.id, { signerSlot: index + 1 })}
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFields((current) => current.filter((field) => field.id !== selected.id));
+                    setSelectedId(null);
+                  }}
+                >
+                  이 칸 지우기
+                </button>
+              </div>
+            )}
+            {selected && selected.type === 'IMAGE' && <p>이 그림은 그대로 저장됩니다.</p>}
+          </div>
+        </div>
       )}
     </div>
   );

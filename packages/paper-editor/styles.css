@@ -116,7 +116,37 @@
   text-align: left;
 }
 
-.wg-paper .wg-paper-box[aria-pressed='true'] {
+.wg-paper .wg-paper-box[data-kind='signature'][data-signer='1'] {
+  border-color: rgba(37, 99, 235, 0.85);
+  background: rgba(219, 234, 254, 0.45);
+  color: rgb(29, 78, 216);
+}
+
+.wg-paper .wg-paper-box[data-kind='signature'][data-signer='2'] {
+  border-color: rgba(217, 119, 6, 0.85);
+  background: rgba(254, 243, 199, 0.45);
+  color: rgb(180, 83, 9);
+}
+
+.wg-paper .wg-paper-box[data-kind='signature'][data-signer='3'] {
+  border-color: rgba(124, 58, 237, 0.85);
+  background: rgba(237, 233, 254, 0.45);
+  color: rgb(109, 40, 217);
+}
+
+.wg-paper .wg-paper-box[data-kind='signature'][data-signer='4'] {
+  border-color: rgba(219, 39, 119, 0.85);
+  background: rgba(252, 231, 243, 0.45);
+  color: rgb(190, 24, 93);
+}
+
+.wg-paper .wg-paper-box[data-kind='signature'][data-signer='5'] {
+  border-color: rgba(2, 132, 199, 0.85);
+  background: rgba(224, 242, 254, 0.45);
+  color: rgb(3, 105, 161);
+}
+
+.wg-paper .wg-paper-box[data-kind][aria-pressed='true'] {
   border-style: dashed;
   border-color: rgba(234, 88, 12, 0.95);
   outline: none;
@@ -205,4 +235,199 @@
   border: 1px solid #fdba74;
   border-radius: 8px;
   font-size: 13px;
+}
+
+.wg-paper .wg-paper-work {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .wg-paper .wg-paper-work {
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
+}
+
+.wg-paper .wg-paper-hint {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--wg-muted);
+}
+
+.wg-paper .wg-paper-tally {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--wg-muted);
+}
+
+.wg-paper .wg-paper-tally .wg-paper-ghost {
+  color: #b45309;
+}
+
+.wg-paper .wg-paper-people {
+  border: 1px solid var(--wg-line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 14px;
+}
+
+.wg-paper .wg-paper-people h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.wg-paper .wg-paper-people p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--wg-muted);
+}
+
+.wg-paper .wg-paper-people ul {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.wg-paper .wg-paper-people li button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  border: 0;
+  background: transparent;
+}
+
+.wg-paper .wg-paper-people li button[aria-pressed='true'] {
+  background: var(--wg-desk);
+}
+
+.wg-paper .wg-paper-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex: none;
+}
+
+.wg-paper .wg-paper-swatch[data-signer='1'] { background: rgba(37, 99, 235, 0.85); }
+.wg-paper .wg-paper-swatch[data-signer='2'] { background: rgba(217, 119, 6, 0.85); }
+.wg-paper .wg-paper-swatch[data-signer='3'] { background: rgba(124, 58, 237, 0.85); }
+.wg-paper .wg-paper-swatch[data-signer='4'] { background: rgba(219, 39, 119, 0.85); }
+.wg-paper .wg-paper-swatch[data-signer='5'] { background: rgba(2, 132, 199, 0.85); }
+
+.wg-paper .wg-paper-people .wg-paper-has {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #047857;
+}
+
+.wg-paper .wg-paper-people .wg-paper-none {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--wg-muted);
+}
+
+.wg-paper .wg-paper-people .wg-paper-role {
+  margin: 4px 0 0 20px;
+  width: calc(100% - 20px);
+}
+
+.wg-paper .wg-paper-who h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.wg-paper .wg-paper-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--wg-muted);
+}
+
+.wg-paper .wg-paper-note b,
+.wg-paper .wg-paper-warn b {
+  color: var(--wg-ink);
+}
+
+.wg-paper .wg-paper-warn {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.08);
+  color: #b45309;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.wg-paper .wg-paper-advanced {
+  border: 1px solid var(--wg-line);
+  border-radius: 8px;
+}
+
+.wg-paper .wg-paper-advanced > button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--wg-muted);
+  text-align: left;
+}
+
+.wg-paper .wg-paper-key {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--wg-desk);
+  color: var(--wg-ink);
+  font-size: 11px;
+}
+
+.wg-paper .wg-paper-advanced-body {
+  display: grid;
+  gap: 6px;
+  padding: 0 8px 8px;
+}
+
+.wg-paper .wg-paper-chip,
+.wg-paper .wg-paper-owner {
+  position: absolute;
+  top: -18px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.wg-paper .wg-paper-chip {
+  left: 0;
+  background: rgba(209, 250, 229, 0.95);
+  color: #064e3b;
+  border: 1px solid rgba(16, 185, 129, 0.45);
+}
+
+.wg-paper .wg-paper-owner {
+  right: 0;
+  background: inherit;
+  border: 1px solid currentColor;
 }

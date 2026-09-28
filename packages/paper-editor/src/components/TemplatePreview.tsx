@@ -3,6 +3,7 @@ import { PaperApiError } from '@wegooli/paper-client';
 
 import { closePdfPages, readPdfPages, usePdfPages } from '../pdf-pages';
 import { fromWire } from '../payload';
+import { displayNames, peopleFrom } from '../signers';
 import type { EditorField, TemplatePreviewProps } from '../types';
 import { ContractPages } from './ContractPages';
 
@@ -17,6 +18,7 @@ export function TemplatePreview({ client, templateId, classNames, pages: pagesPr
   const [pageIndex, setPageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [signerNames, setSignerNames] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -27,8 +29,11 @@ export function TemplatePreview({ client, templateId, classNames, pages: pagesPr
       try {
         const detail = await client.getTemplate(templateId);
         if (cancelled) return;
+        const nextFields = detail.fields.map((field, index) => fromWire(field, index));
+        const people = peopleFrom(detail.signers, nextFields);
         setTitle(detail.title);
-        setFields(detail.fields.map((field, index) => fromWire(field, index)));
+        setFields(nextFields);
+        setSignerNames(displayNames(people.count, people.roles));
         if (!pagesProp) {
           const next = await readPdfPages(await client.getTemplatePdf(templateId));
           if (cancelled) {
@@ -74,6 +79,7 @@ export function TemplatePreview({ client, templateId, classNames, pages: pagesPr
             onSelect={() => {}}
             onChangeField={() => {}}
             onDelete={() => {}}
+            signerNames={signerNames}
             onPrev={() => setPageIndex((index) => Math.max(0, index - 1))}
             onNext={() => setPageIndex((index) => Math.min(pages.length - 1, index + 1))}
           />
