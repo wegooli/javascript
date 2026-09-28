@@ -161,6 +161,43 @@
   padding: 0;
 }
 
+.wg-paper .wg-paper-check {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 8px;
+  align-items: center;
+  color: var(--wg-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wg-paper .wg-paper-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.wg-paper .wg-paper-check span {
+  grid-column: 2;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--wg-muted);
+}
+
+.wg-paper .wg-paper-required {
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 12px;
+  line-height: 16px;
+  text-align: center;
+}
+
 .wg-paper .wg-paper-alert {
   margin-top: 12px;
   padding: 10px 12px;

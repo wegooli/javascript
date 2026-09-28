@@ -29,6 +29,26 @@ function joinClass(...parts: Array<string | undefined>): string {
   return parts.filter(Boolean).join(' ');
 }
 
+function RequiredToggle({
+  field,
+  onChange,
+}: {
+  field: EditorField;
+  onChange: (required: boolean) => void;
+}) {
+  return (
+    <label className="wg-paper-check">
+      <input
+        type="checkbox"
+        checked={field.required}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      필수 입력
+      <span>서명하는 사람이 반드시 채워야 합니다. 끄면 비워도 됩니다.</span>
+    </label>
+  );
+}
+
 function nextFillName(fields: readonly EditorField[]): string {
   const used = new Set(fields.map((field) => field.paramKey).filter((key): key is string => !!key));
   let n = 1;
@@ -349,6 +369,7 @@ export function TemplateEditor({
           )}
           {selected && !systemLocked && selected.type === 'TEXT' && (
             <div className={joinClass('wg-paper-side', classNames?.sidePanel)}>
+              <RequiredToggle field={selected} onChange={(required) => patchField(selected.id, { required })} />
               <label>
                 화면에 보일 이름
                 <input
@@ -387,6 +408,7 @@ export function TemplateEditor({
           )}
           {selected && !systemLocked && selected.type === 'SIGNATURE' && (
             <div className="wg-paper-side">
+              <RequiredToggle field={selected} onChange={(required) => patchField(selected.id, { required })} />
               <button type="button" onClick={() => setFields((current) => current.filter((field) => field.id !== selected.id))}>
                 이 칸 지우기
               </button>

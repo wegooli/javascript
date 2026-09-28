@@ -253,6 +253,11 @@ function FieldBox({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
     >
+      {field.required && (
+        <span className="wg-paper-required" aria-label="필수">
+          *
+        </span>
+      )}
       {field.type === 'TEXT' ? (
         <input
           className="wg-paper-type"
