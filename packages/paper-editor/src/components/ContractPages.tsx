@@ -1,7 +1,7 @@
-import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { DEFAULT_FONT_SIZE_PCT, fontSizeFromPercent, percentBoxToTopLeft } from '@wegooli/paper-core';
 
-import { shiftPercent } from '../placement';
+import { resizePercent, shiftPercent } from '../placement';
 import type { EditorClassNames, EditorField, PageSize } from '../types';
 
 function joinClass(...parts: Array<string | undefined>): string {
@@ -47,44 +47,65 @@ export function ContractPages({
   onPrev,
   onNext,
 }: ContractPagesProps) {
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [frameWidth, setFrameWidth] = useState(0);
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const measure = () => setFrameWidth(el.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const page = pages[pageIndex];
   if (!page) return null;
   const pageNumber = pageIndex + 1;
   const visible = fields.filter((field) => field.pageNumber === pageNumber);
+  const scale = frameWidth > 0 ? Math.min(1, frameWidth / page.width) : 1;
 
   return (
     <div>
       <h1>{title}</h1>
-      {pages.length > 1 && (
-        <div className="wg-paper-toolbar">
-          <button type="button" onClick={onPrev} disabled={pageIndex <= 0}>
-            이전 쪽
-          </button>
-          <span>
-            {pageNumber} / {pages.length}
-          </span>
-          <button type="button" onClick={onNext} disabled={pageIndex >= pages.length - 1}>
-            다음 쪽
-          </button>
+      <div className="wg-paper-toolbar">
+        <button type="button" onClick={onPrev} disabled={pageIndex <= 0}>
+          이전 쪽
+        </button>
+        <span>
+          {pageNumber} / {pages.length}쪽
+        </span>
+        <button type="button" onClick={onNext} disabled={pageIndex >= pages.length - 1}>
+          다음 쪽
+        </button>
+      </div>
+      <div ref={frameRef} style={{ width: '100%', maxWidth: page.width }}>
+        <div style={{ height: page.height * scale }}>
+          <div
+            className={joinClass('wg-paper-page', classNames?.page)}
+            style={{
+              position: 'relative',
+              width: page.width,
+              height: page.height,
+              transform: `scale(${scale})`,
+              transformOrigin: 'top left',
+            }}
+          >
+            <PageCanvas page={page} />
+            {visible.map((field) => (
+              <FieldBox
+                key={field.id}
+                field={field}
+                page={page}
+                readOnly={readOnly}
+                selected={field.id === selectedId}
+                className={classNames?.box}
+                onSelect={onSelect}
+                onChangeField={onChangeField}
+              />
+            ))}
+          </div>
         </div>
-      )}
-      <div
-        className={joinClass('wg-paper-page', classNames?.page)}
-        style={{ position: 'relative', width: page.width, height: page.height }}
-      >
-        <PageCanvas page={page} />
-        {visible.map((field) => (
-          <FieldBox
-            key={field.id}
-            field={field}
-            page={page}
-            readOnly={readOnly}
-            selected={field.id === selectedId}
-            className={classNames?.box}
-            onSelect={onSelect}
-            onChangeField={onChangeField}
-          />
-        ))}
       </div>
     </div>
   );
@@ -127,7 +148,15 @@ function FieldBox({
   const box = percentBoxToTopLeft(field, page.width, page.height);
   const fontPercent = field.fontSize && field.fontSize > 0 ? field.fontSize : DEFAULT_FONT_SIZE_PCT;
   const fontPx = field.type === 'TEXT' ? fontSizeFromPercent(fontPercent, page.height) : undefined;
-  const drag = useRef<{ x: number; y: number } | null>(null);
+  const drag = useRef<{
+    mode: 'move' | 'resize';
+    x: number;
+    y: number;
+    posX: number;
+    posY: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const style = {
     position: 'absolute' as const,
     left: `${box.x}px`,
@@ -147,24 +176,62 @@ function FieldBox({
     );
   }
 
+  function pageDelta(event: ReactPointerEvent<HTMLElement>, startX: number, startY: number) {
+    const rect = event.currentTarget.closest('.wg-paper-page')?.getBoundingClientRect();
+    const sx = rect && rect.width > 0 ? page.width / rect.width : 1;
+    const sy = rect && rect.height > 0 ? page.height / rect.height : 1;
+    return { dx: (event.clientX - startX) * sx, dy: (event.clientY - startY) * sy };
+  }
+
   function onPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
-    drag.current = { x: event.clientX, y: event.clientY };
+    drag.current = {
+      mode: 'move',
+      x: event.clientX,
+      y: event.clientY,
+      posX: field.posX,
+      posY: field.posY,
+      width: field.width,
+      height: field.height,
+    };
     event.currentTarget.setPointerCapture?.(event.pointerId);
+  }
+
+  function onPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    const start = drag.current;
+    if (!start || start.mode !== 'move') return;
+    const { dx, dy } = pageDelta(event, start.x, start.y);
+    if (dx === 0 && dy === 0) return;
+    onChangeField(field.id, shiftPercent(start, page.width, page.height, dx, dy));
   }
 
   function onPointerCancel() {
     drag.current = null;
   }
 
-  function onPointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
-    const start = drag.current;
+  function onPointerUp() {
     drag.current = null;
-    if (!start) return;
-    const dx = event.clientX - start.x;
-    const dy = event.clientY - start.y;
-    if (dx === 0 && dy === 0) return;
-    const next = shiftPercent(field, page.width, page.height, dx, dy);
-    onChangeField(field.id, next);
+  }
+
+  function onResizeDown(event: ReactPointerEvent<HTMLSpanElement>) {
+    event.stopPropagation();
+    event.preventDefault();
+    drag.current = {
+      mode: 'resize',
+      x: event.clientX,
+      y: event.clientY,
+      posX: field.posX,
+      posY: field.posY,
+      width: field.width,
+      height: field.height,
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  }
+
+  function onResizeMove(event: ReactPointerEvent<HTMLSpanElement>) {
+    const start = drag.current;
+    if (!start || start.mode !== 'resize') return;
+    const { dx, dy } = pageDelta(event, start.x, start.y);
+    onChangeField(field.id, resizePercent(start, page.width, page.height, dx, dy));
   }
 
   return (
@@ -177,10 +244,21 @@ function FieldBox({
       style={style}
       onClick={() => onSelect(field.id)}
       onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
     >
       {labelOf(field)}
+      {selected && (
+        <span
+          className="wg-paper-resize"
+          aria-label="크기 조절"
+          onPointerDown={onResizeDown}
+          onPointerMove={onResizeMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerCancel}
+        />
+      )}
     </button>
   );
 }

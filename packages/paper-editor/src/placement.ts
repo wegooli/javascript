@@ -71,6 +71,19 @@ function keepInside(box: TopLeftBox, viewportWidth: number, viewportHeight: numb
   };
 }
 
+export function resizePercent(
+  field: Pick<EditorField, 'posX' | 'posY' | 'width' | 'height'>,
+  viewportWidth: number,
+  viewportHeight: number,
+  dw: number,
+  dh: number,
+): PercentBox {
+  const current = percentBoxToTopLeft(field, viewportWidth, viewportHeight);
+  const width = Math.min(Math.max(36, current.width + dw), viewportWidth - current.x);
+  const height = Math.min(Math.max(20, current.height + dh), viewportHeight - current.y);
+  return topLeftToPercentBox({ ...current, width, height }, viewportWidth, viewportHeight);
+}
+
 export function shiftPercent(
   field: Pick<EditorField, 'posX' | 'posY' | 'width' | 'height'>,
   viewportWidth: number,
