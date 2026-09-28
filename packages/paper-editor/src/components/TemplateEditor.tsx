@@ -29,6 +29,13 @@ function joinClass(...parts: Array<string | undefined>): string {
   return parts.filter(Boolean).join(' ');
 }
 
+function nextFillName(fields: readonly EditorField[]): string {
+  const used = new Set(fields.map((field) => field.paramKey).filter((key): key is string => !!key));
+  let n = 1;
+  while (used.has(`field_${n}`)) n += 1;
+  return `field_${n}`;
+}
+
 export function TemplateEditor({
   client,
   templateId,
@@ -287,7 +294,9 @@ export function TemplateEditor({
             onPrev={() => setPageIndex((index) => Math.max(0, index - 1))}
             onNext={() => setPageIndex((index) => Math.min(pages.length - 1, index + 1))}
           />
-          <p className="wg-paper-lead">서명은 서명란에, 적힐 글자는 글자칸에 둡니다.</p>
+          <p className="wg-paper-lead">
+            칸을 끌어 옮기고, 오른쪽 아래 점으로 크기를 바꿉니다. 글자칸을 누르면 이름을 붙일 수 있습니다.
+          </p>
           {!systemLocked && (
             <div className={joinClass('wg-paper-toolbar', classNames?.toolbar)}>
               <button type="button" onClick={() => setFields((current) => [...current, newSignatureField(pageIndex + 1, page)])}>
@@ -356,6 +365,15 @@ export function TemplateEditor({
                   onChange={(event) => patchField(selected.id, { paramKey: event.target.value || null })}
                 />
               </label>
+              {!selected.paramKey?.trim() && !selected.textContent?.trim() && (
+                <p>지금은 아무도 채울 수 없는 칸입니다. 문구를 적거나, 보낼 때 채우는 칸으로 바꾸세요.</p>
+              )}
+              <button
+                type="button"
+                onClick={() => patchField(selected.id, { paramKey: nextFillName(fields) })}
+              >
+                보낼 때 채우게 하기
+              </button>
               {selectedKey !== '' && !selectedKeyOk && <p>{FORMAT_NOTICE}</p>}
               {selectedKeyOk && normalizeParamKey(selectedKey) !== selectedKey && (
                 <p>저장하면 {normalizeParamKey(selectedKey)} 로 맞춰집니다.</p>
