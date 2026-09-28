@@ -1,5 +1,11 @@
 # @wegooli/paper-editor
 
+## 0.6.0
+
+### Minor Changes
+
+- 810afa6: 계약서 위에 칸을 끌어다 놓을 수 있다. 글자칸은 누가 채우는지 한 장으로 묻고, 서명하는 분이 두 명 이상이면 칸 색이 달라진다.
+
 ## 0.5.0
 
 ### Minor Changes
