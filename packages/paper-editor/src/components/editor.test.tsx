@@ -270,7 +270,7 @@ describe('계약서 화면', () => {
     expect(await screen.findByText('임대차')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '저장하기' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '우리 양식으로 복사한 뒤 고치기' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '서명란 추가' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '서명칸 놓기' })).not.toBeInTheDocument();
   });
 
   it('기본 제공이라고 거절되면 한 번만 보내고 복사 안내로 바뀐다', async () => {
@@ -298,8 +298,8 @@ describe('계약서 화면', () => {
     const update = vi.fn().mockResolvedValue({ id: 't1' });
     const paper = client({ updateTemplate: update });
     render(<TemplateEditor client={paper} templateId="t1" pages={pages} />);
-    fireEvent.click(await screen.findByRole('button', { name: '서명란 추가' }));
-    fireEvent.click(screen.getByRole('button', { name: '글자칸 추가' }));
+    fireEvent.click(await screen.findByRole('button', { name: '서명칸 놓기' }));
+    fireEvent.click(screen.getByRole('button', { name: '글자칸 놓기' }));
     fireEvent.click(screen.getByRole('button', { name: '글자칸' }));
     fireEvent.change(screen.getByLabelText('양식에 박을 문구'), { target: { value: '월세' } });
     fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
