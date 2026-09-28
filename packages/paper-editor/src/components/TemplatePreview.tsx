@@ -73,6 +73,7 @@ export function TemplatePreview({ client, templateId, classNames, pages: pagesPr
             classNames={classNames}
             onSelect={() => {}}
             onChangeField={() => {}}
+            onDelete={() => {}}
             onPrev={() => setPageIndex((index) => Math.max(0, index - 1))}
             onNext={() => setPageIndex((index) => Math.min(pages.length - 1, index + 1))}
           />

@@ -30,6 +30,7 @@ interface ContractPagesProps {
   classNames?: EditorClassNames;
   onSelect: (id: string) => void;
   onChangeField: (id: string, patch: Partial<EditorField>) => void;
+  onDelete: (id: string) => void;
   onPrev: () => void;
   onNext: () => void;
 }
@@ -44,6 +45,7 @@ export function ContractPages({
   classNames,
   onSelect,
   onChangeField,
+  onDelete,
   onPrev,
   onNext,
 }: ContractPagesProps) {
@@ -102,6 +104,7 @@ export function ContractPages({
                 className={classNames?.box}
                 onSelect={onSelect}
                 onChangeField={onChangeField}
+                onDelete={onDelete}
               />
             ))}
           </div>
@@ -136,6 +139,7 @@ function FieldBox({
   className,
   onSelect,
   onChangeField,
+  onDelete,
 }: {
   field: EditorField;
   page: PageSize;
@@ -144,6 +148,7 @@ function FieldBox({
   className?: string;
   onSelect: (id: string) => void;
   onChangeField: (id: string, patch: Partial<EditorField>) => void;
+  onDelete: (id: string) => void;
 }) {
   const box = percentBoxToTopLeft(field, page.width, page.height);
   const fontPercent = field.fontSize && field.fontSize > 0 ? field.fontSize : DEFAULT_FONT_SIZE_PCT;
@@ -248,7 +253,33 @@ function FieldBox({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
     >
-      {labelOf(field)}
+      {field.type === 'TEXT' ? (
+        <input
+          className="wg-paper-type"
+          aria-label="글자칸 내용"
+          value={field.textContent ?? ''}
+          placeholder="텍스트 입력..."
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+          onChange={(event) => onChangeField(field.id, { textContent: event.target.value })}
+        />
+      ) : (
+        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+          {field.type === 'IMAGE' ? '이미지' : '서명'}
+        </span>
+      )}
+      <span
+        className="wg-paper-x"
+        role="button"
+        aria-label="이 칸 지우기"
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.stopPropagation();
+          onDelete(field.id);
+        }}
+      >
+        ×
+      </span>
       {selected && (
         <span
           className="wg-paper-resize"

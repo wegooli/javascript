@@ -281,29 +281,14 @@ export function TemplateEditor({
       )}
       {!loading && page && (
         <>
-          <ContractPages
-            title={title}
-            pages={pages}
-            pageIndex={pageIndex}
-            fields={fields}
-            readOnly={systemLocked}
-            selectedId={selectedId}
-            classNames={classNames}
-            onSelect={setSelectedId}
-            onChangeField={patchField}
-            onPrev={() => setPageIndex((index) => Math.max(0, index - 1))}
-            onNext={() => setPageIndex((index) => Math.min(pages.length - 1, index + 1))}
-          />
-          <p className="wg-paper-lead">
-            칸을 끌어 옮기고, 오른쪽 아래 점으로 크기를 바꿉니다. 글자칸을 누르면 이름을 붙일 수 있습니다.
-          </p>
           {!systemLocked && (
             <div className={joinClass('wg-paper-toolbar', classNames?.toolbar)}>
+              <p className="wg-paper-lead">칸을 계약서 위로 끌어다 놓으십시오. 글자칸은 그 자리에서 글을 적을 수 있습니다.</p>
               <button type="button" onClick={() => setFields((current) => [...current, newSignatureField(pageIndex + 1, page)])}>
-                서명란 추가
+                서명칸 놓기
               </button>
               <button type="button" onClick={() => setFields((current) => [...current, newTextField(pageIndex + 1, page)])}>
-                글자칸 추가
+                글자칸 놓기
               </button>
               <button
                 type="button"
@@ -315,6 +300,23 @@ export function TemplateEditor({
               </button>
             </div>
           )}
+          <ContractPages
+            title={title}
+            pages={pages}
+            pageIndex={pageIndex}
+            fields={fields}
+            readOnly={systemLocked}
+            selectedId={selectedId}
+            classNames={classNames}
+            onSelect={setSelectedId}
+            onChangeField={patchField}
+            onDelete={(id) => {
+              setFields((current) => current.filter((field) => field.id !== id));
+              setSelectedId((current) => (current === id ? null : current));
+            }}
+            onPrev={() => setPageIndex((index) => Math.max(0, index - 1))}
+            onNext={() => setPageIndex((index) => Math.min(pages.length - 1, index + 1))}
+          />
           {systemLocked && (
             <div className="wg-paper-toolbar">
               <p>{SYSTEM_NOTICE}</p>
