@@ -36,6 +36,21 @@ export function centeredPercent(
   return topLeftToPercentBox(centeredBox(viewportWidth, viewportHeight, size), viewportWidth, viewportHeight);
 }
 
+/** 떨어뜨린 지점이 칸의 가운데가 되게 하고, 쪽 밖으로 나가지 않게 붙인다. */
+export function boxAtPoint(
+  viewportWidth: number,
+  viewportHeight: number,
+  size: { width: number; height: number },
+  pointX: number,
+  pointY: number,
+): PercentBox {
+  const width = Math.min(size.width, Math.max(1, viewportWidth));
+  const height = Math.min(size.height, Math.max(1, viewportHeight));
+  const x = Math.min(Math.max(0, pointX - width / 2), Math.max(0, viewportWidth - width));
+  const y = Math.min(Math.max(0, pointY - height / 2), Math.max(0, viewportHeight - height));
+  return topLeftToPercentBox({ x, y, width, height }, viewportWidth, viewportHeight);
+}
+
 /** 화면 픽셀로 바꾼 좌우 여백. 상수 2pt는 paper-core에만 있다. */
 export function paddingOnScreen(viewportWidth: number, pageWidth: number): number {
   if (!(pageWidth > 0)) return TEXT_PADDING_PT;
@@ -109,14 +124,16 @@ function newId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `field-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function newSignatureField(pageNumber: number, page: PageSize): EditorField {
-  const box = centeredPercent(page.width, page.height, SIGNATURE_BOX_PX);
+function blankField(
+  pageNumber: number,
+  box: PercentBox,
+  extra: Pick<EditorField, 'type' | 'signerSlot'> & Partial<EditorField>,
+): EditorField {
   return {
     id: newId(),
     pageNumber,
     ...box,
     required: false,
-    type: 'SIGNATURE',
     imageFileKey: null,
     imageMime: null,
     imageUrl: null,
@@ -124,27 +141,47 @@ export function newSignatureField(pageNumber: number, page: PageSize): EditorFie
     fontSize: null,
     label: null,
     paramKey: null,
-    signerSlot: 1,
     inputType: null,
+    ...extra,
   };
 }
 
+export function newSignatureField(pageNumber: number, page: PageSize, signerSlot = 1): EditorField {
+  return blankField(pageNumber, centeredPercent(page.width, page.height, SIGNATURE_BOX_PX), {
+    type: 'SIGNATURE',
+    signerSlot,
+  });
+}
+
+export function newSignatureFieldAt(
+  pageNumber: number,
+  page: PageSize,
+  x: number,
+  y: number,
+  signerSlot = 1,
+): EditorField {
+  return blankField(pageNumber, boxAtPoint(page.width, page.height, SIGNATURE_BOX_PX, x, y), {
+    type: 'SIGNATURE',
+    signerSlot,
+  });
+}
+
 export function newTextField(pageNumber: number, page: PageSize): EditorField {
-  const box = centeredPercent(page.width, page.height, TEXT_BOX_PX);
-  return {
-    id: newId(),
-    pageNumber,
-    ...box,
-    required: false,
+  return blankField(pageNumber, centeredPercent(page.width, page.height, TEXT_BOX_PX), {
     type: 'TEXT',
-    imageFileKey: null,
-    imageMime: null,
-    imageUrl: null,
+    signerSlot: 1,
     textContent: '',
     fontSize: DEFAULT_FONT_SIZE_PCT,
-    label: null,
-    paramKey: null,
-    signerSlot: 1,
     inputType: 'TEXT',
-  };
+  });
+}
+
+export function newTextFieldAt(pageNumber: number, page: PageSize, x: number, y: number): EditorField {
+  return blankField(pageNumber, boxAtPoint(page.width, page.height, TEXT_BOX_PX, x, y), {
+    type: 'TEXT',
+    signerSlot: 1,
+    textContent: '',
+    fontSize: DEFAULT_FONT_SIZE_PCT,
+    inputType: 'TEXT',
+  });
 }

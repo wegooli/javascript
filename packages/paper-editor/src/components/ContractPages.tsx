@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { DEFAULT_FONT_SIZE_PCT, fontSizeFromPercent, percentBoxToTopLeft } from '@wegooli/paper-core';
 
 import { resizePercent, shiftPercent } from '../placement';
+import { signerColorSlot } from '../signers';
 import type { EditorClassNames, EditorField, PageSize } from '../types';
 
 function joinClass(...parts: Array<string | undefined>): string {
@@ -33,6 +34,9 @@ interface ContractPagesProps {
   onDelete: (id: string) => void;
   onPrev: () => void;
   onNext: () => void;
+  /** 1번부터 순서대로. 두 명 이상일 때만 칸 위에 이름을 띄운다. */
+  signerNames?: readonly string[];
+  onPlace?: (type: 'SIGNATURE' | 'TEXT', x: number, y: number) => void;
 }
 
 export function ContractPages({
@@ -48,6 +52,8 @@ export function ContractPages({
   onDelete,
   onPrev,
   onNext,
+  signerNames = [],
+  onPlace,
 }: ContractPagesProps) {
   const frameRef = useRef<HTMLDivElement>(null);
   const [frameWidth, setFrameWidth] = useState(0);
@@ -92,6 +98,26 @@ export function ContractPages({
               transform: `scale(${scale})`,
               transformOrigin: 'top left',
             }}
+            onDragOver={(event) => {
+              if (readOnly || !onPlace) return;
+              const types = Array.from(event.dataTransfer?.types ?? []);
+              if (!types.includes('application/x-field-type')) return;
+              event.preventDefault();
+              event.dataTransfer.dropEffect = 'copy';
+            }}
+            onDrop={(event) => {
+              if (readOnly || !onPlace) return;
+              const type = event.dataTransfer?.getData('application/x-field-type');
+              if (type !== 'SIGNATURE' && type !== 'TEXT') return;
+              event.preventDefault();
+              const rect = event.currentTarget.getBoundingClientRect();
+              const sx = rect.width > 0 ? page.width / rect.width : 1;
+              const sy = rect.height > 0 ? page.height / rect.height : 1;
+              const pointX = (event.clientX - rect.left) * sx;
+              const pointY = (event.clientY - rect.top) * sy;
+              if (!Number.isFinite(pointX) || !Number.isFinite(pointY)) return;
+              onPlace(type, pointX, pointY);
+            }}
           >
             <PageCanvas page={page} />
             {visible.map((field) => (
@@ -105,6 +131,7 @@ export function ContractPages({
                 onSelect={onSelect}
                 onChangeField={onChangeField}
                 onDelete={onDelete}
+                signerNames={signerNames}
               />
             ))}
           </div>
@@ -140,6 +167,7 @@ function FieldBox({
   onSelect,
   onChangeField,
   onDelete,
+  signerNames,
 }: {
   field: EditorField;
   page: PageSize;
@@ -149,6 +177,7 @@ function FieldBox({
   onSelect: (id: string) => void;
   onChangeField: (id: string, patch: Partial<EditorField>) => void;
   onDelete: (id: string) => void;
+  signerNames: readonly string[];
 }) {
   const box = percentBoxToTopLeft(field, page.width, page.height);
   const fontPercent = field.fontSize && field.fontSize > 0 ? field.fontSize : DEFAULT_FONT_SIZE_PCT;
@@ -172,10 +201,28 @@ function FieldBox({
     fontSize: fontPx,
   };
   const classNames = joinClass('wg-paper-box', className);
+  const signerMark =
+    field.type === 'SIGNATURE' ? String(signerColorSlot(field.signerSlot)) : undefined;
+  const ownerName =
+    field.type === 'SIGNATURE' && signerNames.length > 1
+      ? (signerNames[(field.signerSlot || 1) - 1] ?? `${field.signerSlot || 1}번 서명자`)
+      : null;
+  const marks = (
+    <>
+      {field.required && (
+        <span className="wg-paper-required" aria-label="필수">
+          *
+        </span>
+      )}
+      {field.label?.trim() && <span className="wg-paper-chip">{field.label.trim()}</span>}
+      {ownerName && <span className="wg-paper-owner">{ownerName}</span>}
+    </>
+  );
 
   if (readOnly) {
     return (
-      <div className={classNames} data-kind={kindOf(field)} style={style}>
+      <div className={classNames} data-kind={kindOf(field)} data-signer={signerMark} style={style}>
+        {marks}
         {labelOf(field)}
       </div>
     );
@@ -244,6 +291,7 @@ function FieldBox({
       type="button"
       className={classNames}
       data-kind={kindOf(field)}
+      data-signer={signerMark}
       aria-label={labelOf(field)}
       aria-pressed={selected}
       style={style}
@@ -253,11 +301,7 @@ function FieldBox({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
     >
-      {field.required && (
-        <span className="wg-paper-required" aria-label="필수">
-          *
-        </span>
-      )}
+      {marks}
       {field.type === 'TEXT' ? (
         <input
           className="wg-paper-type"

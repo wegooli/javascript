@@ -1,7 +1,22 @@
-import { DEFAULT_FONT_SIZE_PCT, fontSizeFromPercent, upperBoundTextWidth } from '@wegooli/paper-core';
+import {
+  DEFAULT_FONT_SIZE_PCT,
+  fontSizeFromPercent,
+  percentBoxToTopLeft,
+  upperBoundTextWidth,
+} from '@wegooli/paper-core';
 import { describe, expect, it } from 'vitest';
 
-import { fittedBoxWidthPx, paddingOnScreen } from './placement';
+import { boxAtPoint, fittedBoxWidthPx, paddingOnScreen } from './placement';
+
+describe('끌어다 놓은 자리', () => {
+  it('떨어뜨린 점이 칸의 가운데가 되고 쪽 안에 붙는다', () => {
+    const placed = percentBoxToTopLeft(boxAtPoint(500, 1000, { width: 160, height: 36 }, 100, 80), 500, 1000);
+    expect(placed).toMatchObject({ x: 20, y: 62, width: 160, height: 36 });
+    const pinned = percentBoxToTopLeft(boxAtPoint(500, 1000, { width: 160, height: 36 }, 10, 10), 500, 1000);
+    expect(pinned.x).toBe(0);
+    expect(pinned.y).toBe(0);
+  });
+});
 
 describe('글자 폭', () => {
   it('잰 폭이 칸보다 넓으면 여백을 더한 너비로 늘린다', () => {
