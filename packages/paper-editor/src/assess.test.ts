@@ -21,6 +21,7 @@ function text(patch: Partial<EditorField> & Pick<EditorField, 'id'>): EditorFiel
     paramKey: null,
     signerSlot: 1,
     inputType: 'TEXT',
+    dateFormat: null,
     ...patch,
   };
 }

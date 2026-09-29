@@ -143,6 +143,7 @@ function blankField(
     label: null,
     paramKey: null,
     inputType: null,
+    dateFormat: null,
     ...extra,
   };
 }

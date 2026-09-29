@@ -433,7 +433,7 @@ describe('계약서 화면', () => {
     render(<TemplateEditor client={paper} templateId="t1" pages={pages} expectedParamKeys={['date_1']} />);
     fireEvent.click(await screen.findByRole('button', { name: '날짜칸 놓기' }));
     expect(screen.getByRole('heading', { name: '날짜칸' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '날짜칸' })).toHaveTextContent('날짜 · 보낼 때 고름');
+    expect(screen.getByRole('button', { name: '날짜칸' })).toHaveTextContent('📅YYYY-MM-DD');
 
     fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('날짜칸에 이름표를 적어 주십시오');
@@ -441,6 +441,7 @@ describe('계약서 화면', () => {
 
     fireEvent.change(screen.getByPlaceholderText('예: 시작일'), { target: { value: '시작일' } });
     expect(screen.getByText(/「시작일」을 달력으로 고르고/)).toBeInTheDocument();
+    expect(screen.getByText('2026-03-05', { selector: 'b' })).toHaveClass('wg-paper-date-sample');
     fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
     await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
     const body = update.mock.calls[0]?.[1] as { fields: Array<Record<string, unknown>> };
@@ -468,7 +469,7 @@ describe('계약서 화면', () => {
     Object.defineProperty(dropEvent, 'dataTransfer', { value: data });
     fireEvent(pageEl as Element, dropEvent);
     const box = await screen.findByRole('button', { name: '날짜칸' });
-    expect(box).toHaveAttribute('data-kind', 'text');
+    expect(box).toHaveAttribute('data-kind', 'date');
     expect(screen.getByText(/날짜 1개/)).toBeInTheDocument();
   });
 
@@ -587,5 +588,58 @@ describe('계약서 화면', () => {
         expect.objectContaining({ type: 'TEXT', inputType: 'DATE', paramKey: 'date_1' }),
       ]),
     );
+  });
+
+  it('날짜 모양을 고르면 미리 보여 주고, 그 모양을 저장한다', async () => {
+    const update = vi.fn().mockResolvedValue({ id: 't1' });
+    render(
+      <TemplateEditor client={client({ updateTemplate: update })} templateId="t1" pages={pages} expectedParamKeys={['date_1']} />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '날짜칸 놓기' }));
+    fireEvent.change(screen.getByPlaceholderText('예: 시작일'), { target: { value: '계약일' } });
+    fireEvent.click(screen.getByRole('button', { name: '2026년 3월 5일' }));
+    expect(screen.getByText('2026년 3월 5일', { selector: 'b' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '날짜칸' })).toHaveTextContent('YYYY년 M월 D일');
+    fireEvent.change(screen.getByLabelText('계약서에 찍힐 모양'), { target: { value: 'YY.MM' } });
+    expect(screen.getByText('26.03', { selector: 'b' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    const body = update.mock.calls[0]?.[1] as { fields: Array<Record<string, unknown>> };
+    expect(body.fields[0]).toMatchObject({ inputType: 'DATE', dateFormat: 'YY.MM' });
+  });
+
+  it('연·월·일이 없는 모양은 저장하지 않는다', async () => {
+    const update = vi.fn();
+    render(
+      <TemplateEditor client={client({ updateTemplate: update })} templateId="t1" pages={pages} expectedParamKeys={['date_1']} />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '날짜칸 놓기' }));
+    fireEvent.change(screen.getByPlaceholderText('예: 시작일'), { target: { value: '계약일' } });
+    fireEvent.change(screen.getByLabelText('계약서에 찍힐 모양'), { target: { value: '년 월 일' } });
+    expect(screen.getByText(/중 하나는 들어 있어야 합니다/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('날짜 모양을 고쳐 주십시오');
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('20__년 __월 __일처럼 한 날짜를 칸 셋에 나눠 찍는다', async () => {
+    const update = vi.fn().mockResolvedValue({ id: 't1' });
+    render(
+      <TemplateEditor client={client({ updateTemplate: update })} templateId="t1" pages={pages} expectedParamKeys={['date_1']} />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '날짜칸 놓기' }));
+    fireEvent.change(screen.getByPlaceholderText('예: 시작일'), { target: { value: '계약일' } });
+    fireEvent.click(screen.getByRole('button', { name: '연도만' }));
+    fireEvent.click(screen.getByRole('button', { name: '날짜칸 놓기' }));
+    fireEvent.change(screen.getByLabelText('다른 날짜칸과 같은 날짜 쓰기'), { target: { value: 'date_1' } });
+    fireEvent.click(screen.getByRole('button', { name: '월만' }));
+    expect(screen.queryByText(/같은 이름이 다른 칸에도 있습니다/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    const body = update.mock.calls[0]?.[1] as { fields: Array<Record<string, unknown>> };
+    expect(body.fields).toEqual([
+      expect.objectContaining({ paramKey: 'date_1', label: '계약일', dateFormat: 'YYYY' }),
+      expect.objectContaining({ paramKey: 'date_1', label: '계약일', dateFormat: 'M' }),
+    ]);
   });
 });

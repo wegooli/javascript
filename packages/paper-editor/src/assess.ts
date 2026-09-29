@@ -1,4 +1,9 @@
-import { findDuplicateParamKeys, normalizeParamKey, validateParamKey } from '@wegooli/paper-core';
+import {
+  findDuplicateParamKeys,
+  normalizeParamKey,
+  validateDateFormat,
+  validateParamKey,
+} from '@wegooli/paper-core';
 
 import type { EditorField } from './types';
 
@@ -7,6 +12,7 @@ export type SaveAssessment =
   | { ok: false; reason: 'ghost'; ghostCount: number; duplicates: string[] }
   | { ok: false; reason: 'invalid'; fieldId: string; duplicates: string[] }
   | { ok: false; reason: 'unnamedDate'; fieldId: string; duplicates: string[] }
+  | { ok: false; reason: 'dateFormat'; fieldId: string; duplicates: string[] }
   | { ok: false; reason: 'confirm'; unknownKeys: string[]; duplicates: string[] }
   | { ok: false; reason: 'catalog'; duplicates: string[] };
 
@@ -21,6 +27,14 @@ export function isDateField(field: EditorField): boolean {
 /** 보낼 때 채우는 날짜칸은 보내는 사람이 무엇을 고르는지 알 이름표가 있어야 한다. */
 export function isUnnamedDate(field: EditorField): boolean {
   return isDateField(field) && trimmed(field.paramKey) !== '' && trimmed(field.label) === '';
+}
+
+/** 적어 둔 날짜 모양이 저장할 수 없는 모양인가. 비어 있으면 기본 모양이라 괜찮다. */
+export function hasBadDateFormat(field: EditorField): boolean {
+  if (!isDateField(field)) return false;
+  const pattern = field.dateFormat ?? '';
+  if (pattern.trim() === '') return false;
+  return !validateDateFormat(pattern).ok;
 }
 
 export function isGhost(field: EditorField): boolean {
@@ -57,6 +71,11 @@ export function assessTemplateSave(
   const ghostCount = fields.filter(isGhost).length;
   if (ghostCount > 0) {
     return { ok: false, reason: 'ghost', ghostCount, duplicates };
+  }
+
+  const badFormat = fields.find(hasBadDateFormat);
+  if (badFormat) {
+    return { ok: false, reason: 'dateFormat', fieldId: badFormat.id, duplicates };
   }
 
   const unnamedDate = fields.find(isUnnamedDate);

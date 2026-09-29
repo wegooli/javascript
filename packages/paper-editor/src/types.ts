@@ -21,6 +21,8 @@ export interface EditorField {
   paramKey: string | null;
   signerSlot: number;
   inputType: FieldInputType | null;
+  /** 날짜칸의 모양. 예: `YYYY년 M월 D일`. null이면 `YYYY-MM-DD`. */
+  dateFormat: string | null;
 }
 
 export interface PageSize {

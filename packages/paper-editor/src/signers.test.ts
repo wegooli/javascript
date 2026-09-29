@@ -22,6 +22,7 @@ function signature(slot: number): EditorField {
     paramKey: null,
     signerSlot: slot,
     inputType: null,
+    dateFormat: null,
   };
 }
 

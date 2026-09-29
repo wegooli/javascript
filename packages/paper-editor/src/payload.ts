@@ -23,6 +23,7 @@ export function fromWire(field: TemplateField, index = 0): EditorField {
     paramKey: field.paramKey ?? null,
     signerSlot: field.signerSlot && field.signerSlot > 0 ? field.signerSlot : 1,
     inputType: field.inputType ?? null,
+    dateFormat: field.dateFormat ?? null,
   };
 }
 
@@ -64,6 +65,7 @@ export function toFieldPayload(field: EditorField): TemplateFieldInput {
       label: field.label,
       paramKey: storedParamKey(field.paramKey),
       inputType: field.inputType ?? 'TEXT',
+      ...(field.inputType === 'DATE' ? { dateFormat: field.dateFormat?.trim() || null } : {}),
     };
   }
 
