@@ -76,8 +76,10 @@ export function TemplateEditor({
   templateId,
   file,
   title: titleProp,
+  description,
   expectedParamKeys,
   onSaved,
+  onFieldsChange,
   uploadImage,
   classNames,
   pages: pagesProp,
@@ -101,6 +103,11 @@ export function TemplateEditor({
   const [knownKeys, setKnownKeys] = useState<readonly { key: string; label: string | null }[] | null>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
   const draggedTool = useRef(false);
+  // 제목은 저장할 때 읽는다. 바뀔 때마다 PDF를 다시 읽으면 찍어 둔 칸이 사라진다.
+  const titleRef = useRef(titleProp);
+  titleRef.current = titleProp;
+  const onFieldsChangeRef = useRef(onFieldsChange);
+  onFieldsChangeRef.current = onFieldsChange;
   const imageInputRef = useRef<HTMLInputElement>(null);
   const pendingImage = useRef<{ pageIndex: number; at?: { x: number; y: number } } | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -155,7 +162,7 @@ export function TemplateEditor({
           if (cancelled) return;
           setTemplateIdState(undefined);
           setSystemLocked(false);
-          setTitle(titleProp?.trim() || '계약서');
+          setTitle(titleRef.current?.trim() || '계약서');
           setFields([]);
           setSignerCount(1);
           setRoles({});
@@ -184,7 +191,11 @@ export function TemplateEditor({
     return () => {
       cancelled = true;
     };
-  }, [client, templateId, file, pagesProp, titleProp, showPdfPages]);
+  }, [client, templateId, file, pagesProp, showPdfPages]);
+
+  useEffect(() => {
+    onFieldsChangeRef.current?.(fields);
+  }, [fields]);
 
   useEffect(() => {
     if (expectedParamKeys) {
@@ -206,6 +217,7 @@ export function TemplateEditor({
   }, [client, expectedParamKeys]);
 
   const page = pages[pageIndex];
+  const shownTitle = titleProp?.trim() || title;
   const selected = fields.find((field) => field.id === selectedId) ?? null;
   const duplicates = findDuplicateParamKeys(fields.map((field) => (field.type === 'TEXT' ? field.paramKey : null)));
   const ghostCount = fields.filter(isGhost).length;
@@ -409,7 +421,10 @@ export function TemplateEditor({
       const signers = savedSigners();
       if (templateIdState) {
         const saved = await client.updateTemplate(templateIdState, {
-          ...toUpdateBody(fields, { title }),
+          ...toUpdateBody(fields, {
+            title: shownTitle,
+            ...(description !== undefined ? { description } : {}),
+          }),
           ...signers,
         });
         setSignersDirty(false);
@@ -417,7 +432,8 @@ export function TemplateEditor({
       } else if (file) {
         const saved = await client.createTemplate({
           file,
-          title: title.trim() || '계약서',
+          title: shownTitle.trim() || '계약서',
+          ...(description !== undefined ? { description } : {}),
           fields: fields.map(toFieldPayload),
           ...(thumbnail ? { thumbnail } : {}),
           ...signers,
@@ -578,7 +594,7 @@ export function TemplateEditor({
               </div>
             )}
             <ContractPages
-              title={title}
+              title={shownTitle}
               pages={pages}
               pageIndex={pageIndex}
               fields={fields}
