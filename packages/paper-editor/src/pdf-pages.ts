@@ -34,23 +34,38 @@ type WorkerGlobal = typeof globalThis & {
  * pdfjs 4는 disableWorker를 무시한다. 워커 파일을 파트너가 따로 두지 않도록
  * 이 패키지가 워커 모듈을 불러 메인 스레드에서 읽게 한다.
  */
+
 const openDocuments = new WeakMap<readonly PageSize[], () => Promise<void>>();
 
-async function loadMainThreadWorker(): Promise<void> {
-  const worker = await import('pdfjs-dist/build/pdf.worker.mjs');
+/**
+ * pdfjs는 전역 pdfjsWorker가 있으면 버전을 따지지 않고 그 워커를 쓴다.
+ * 파트너 페이지에 다른 버전의 pdfjs(react-pdf 등)가 있으면, 전역을 남겨 두는 순간
+ * 그쪽 PDF가 "API 버전과 워커 버전이 다르다"로 열리지 않는다. 페이지를 옮겨도 남는다.
+ * 그래서 문서를 여는 그 한 줄 동안만 올리고 바로 되돌린다.
+ * 이 버전의 pdfjs는 여는 순간 워커를 읽어 자기 안에 기억하므로, 되돌려도 계속 읽힌다.
+ */
+function withMainThreadWorker<T>(handler: unknown, open: () => T): T {
   const scope = globalThis as WorkerGlobal;
-  if (!scope.pdfjsWorker?.WorkerMessageHandler) {
-    scope.pdfjsWorker = { WorkerMessageHandler: worker.WorkerMessageHandler };
+  const had = Object.prototype.hasOwnProperty.call(scope, 'pdfjsWorker');
+  const previous = scope.pdfjsWorker;
+  scope.pdfjsWorker = { WorkerMessageHandler: handler };
+  try {
+    return open();
+  } finally {
+    if (had) scope.pdfjsWorker = previous;
+    else delete scope.pdfjsWorker;
   }
 }
 
 export async function readPdfPages(data: ArrayBuffer): Promise<PageSize[]> {
-  await loadMainThreadWorker();
+  const worker = await import('pdfjs-dist/build/pdf.worker.mjs');
   const pdfjs = (await import('pdfjs-dist')) as unknown as PdfjsModule;
-  const task = pdfjs.getDocument({
-    data: new Uint8Array(data),
-    isEvalSupported: false,
-  });
+  const task = withMainThreadWorker(worker.WorkerMessageHandler, () =>
+    pdfjs.getDocument({
+      data: new Uint8Array(data),
+      isEvalSupported: false,
+    }),
+  );
   try {
     const doc = await task.promise;
     const pages: PageSize[] = [];
