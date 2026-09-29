@@ -6,11 +6,21 @@ export type SaveAssessment =
   | { ok: true; duplicates: string[]; unknownKeys: [] }
   | { ok: false; reason: 'ghost'; ghostCount: number; duplicates: string[] }
   | { ok: false; reason: 'invalid'; fieldId: string; duplicates: string[] }
+  | { ok: false; reason: 'unnamedDate'; fieldId: string; duplicates: string[] }
   | { ok: false; reason: 'confirm'; unknownKeys: string[]; duplicates: string[] }
   | { ok: false; reason: 'catalog'; duplicates: string[] };
 
 function trimmed(value: string | null | undefined): string {
   return value?.trim() ?? '';
+}
+
+export function isDateField(field: EditorField): boolean {
+  return field.type === 'TEXT' && field.inputType === 'DATE';
+}
+
+/** 보낼 때 채우는 날짜칸은 보내는 사람이 무엇을 고르는지 알 이름표가 있어야 한다. */
+export function isUnnamedDate(field: EditorField): boolean {
+  return isDateField(field) && trimmed(field.paramKey) !== '' && trimmed(field.label) === '';
 }
 
 export function isGhost(field: EditorField): boolean {
@@ -47,6 +57,11 @@ export function assessTemplateSave(
   const ghostCount = fields.filter(isGhost).length;
   if (ghostCount > 0) {
     return { ok: false, reason: 'ghost', ghostCount, duplicates };
+  }
+
+  const unnamedDate = fields.find(isUnnamedDate);
+  if (unnamedDate) {
+    return { ok: false, reason: 'unnamedDate', fieldId: unnamedDate.id, duplicates };
   }
 
   for (const field of fields) {

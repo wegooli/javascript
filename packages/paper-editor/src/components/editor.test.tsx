@@ -426,4 +426,49 @@ describe('계약서 화면', () => {
     expect(screen.getByText(/보낼 때 채웁니다/)).toBeInTheDocument();
     expect(screen.getByText(/이름표를 적어 주십시오/)).toBeInTheDocument();
   });
+
+  it('날짜칸은 글자칸의 넣는 방법으로 놓이고, 이름표가 있어야 저장된다', async () => {
+    const update = vi.fn().mockResolvedValue({ id: 't1' });
+    const paper = client({ updateTemplate: update, listParamKeys: vi.fn().mockResolvedValue({ keys: [] }) });
+    render(<TemplateEditor client={paper} templateId="t1" pages={pages} expectedParamKeys={['date_1']} />);
+    fireEvent.click(await screen.findByRole('button', { name: '날짜칸 놓기' }));
+    expect(screen.getByRole('heading', { name: '날짜칸' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '날짜칸' })).toHaveTextContent('날짜 · 보낼 때 고름');
+
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('날짜칸에 이름표를 적어 주십시오');
+    expect(update).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByPlaceholderText('예: 시작일'), { target: { value: '시작일' } });
+    expect(screen.getByText(/「시작일」을 달력으로 고르고/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    const body = update.mock.calls[0]?.[1] as { fields: Array<Record<string, unknown>> };
+    expect(body.fields).toHaveLength(1);
+    expect(body.fields[0]).toMatchObject({
+      type: 'TEXT',
+      inputType: 'DATE',
+      label: '시작일',
+      paramKey: 'date_1',
+    });
+  });
+
+  it('날짜칸도 끌어다 놓을 수 있다', async () => {
+    const paper = client();
+    render(<TemplateEditor client={paper} templateId="t1" pages={pages} />);
+    await screen.findByRole('button', { name: '날짜칸 놓기' });
+    const pageEl = document.querySelector('.wg-paper-page');
+    const data = {
+      dropEffect: 'copy',
+      effectAllowed: 'copy',
+      types: ['application/x-field-type'],
+      getData: (key: string) => (key === 'application/x-field-type' ? 'DATE' : ''),
+    };
+    const dropEvent = new MouseEvent('drop', { bubbles: true, clientX: 100, clientY: 80 });
+    Object.defineProperty(dropEvent, 'dataTransfer', { value: data });
+    fireEvent(pageEl as Element, dropEvent);
+    const box = await screen.findByRole('button', { name: '날짜칸' });
+    expect(box).toHaveAttribute('data-kind', 'text');
+    expect(screen.getByText(/날짜 1개/)).toBeInTheDocument();
+  });
 });

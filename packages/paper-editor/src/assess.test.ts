@@ -78,4 +78,25 @@ describe('저장 판단', () => {
     const result = assessTemplateSave([text({ id: 'a', paramKey: 'rent' })], null);
     expect(result).toMatchObject({ ok: false, reason: 'catalog' });
   });
+
+  it('보낼 때 채우는 날짜칸에 이름표가 없으면 막는다', () => {
+    const result = assessTemplateSave(
+      [text({ id: 'd', inputType: 'DATE', paramKey: 'start_date' })],
+      ['start_date'],
+    );
+    expect(result).toMatchObject({ ok: false, reason: 'unnamedDate', fieldId: 'd' });
+  });
+
+  it('이름표가 있는 날짜칸은 저장할 수 있다', () => {
+    const result = assessTemplateSave(
+      [text({ id: 'd', inputType: 'DATE', paramKey: 'start_date', label: '시작일' })],
+      ['start_date'],
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it('양식에 박힌 날짜는 이름표 없이도 저장한다', () => {
+    const result = assessTemplateSave([text({ id: 'd', inputType: 'DATE', textContent: '2026-01-01' })], []);
+    expect(result.ok).toBe(true);
+  });
 });

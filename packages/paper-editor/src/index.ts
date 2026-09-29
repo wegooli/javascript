@@ -1,4 +1,4 @@
-export { assessTemplateSave, isGhost } from './assess';
+export { assessTemplateSave, isDateField, isGhost } from './assess';
 export type { SaveAssessment } from './assess';
 export { TemplateEditor } from './components/TemplateEditor';
 export { TemplatePreview } from './components/TemplatePreview';

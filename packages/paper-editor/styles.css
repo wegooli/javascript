@@ -116,6 +116,18 @@
   text-align: left;
 }
 
+/* 날짜칸: 보내는 분이 달력으로 고른다. 편집기에서는 글자를 적지 않는다. */
+.wg-paper .wg-paper-date {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
 .wg-paper .wg-paper-box[data-kind='signature'][data-signer='1'] {
   border-color: rgba(37, 99, 235, 0.85);
   background: rgba(219, 234, 254, 0.45);

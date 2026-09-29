@@ -166,22 +166,31 @@ export function newSignatureFieldAt(
   });
 }
 
-export function newTextField(pageNumber: number, page: PageSize): EditorField {
+/** 날짜칸은 종류가 아니다. 글자칸의 넣는 방법만 날짜다. */
+export type TextInput = 'TEXT' | 'DATE';
+
+export function newTextField(pageNumber: number, page: PageSize, inputType: TextInput = 'TEXT'): EditorField {
   return blankField(pageNumber, centeredPercent(page.width, page.height, TEXT_BOX_PX), {
     type: 'TEXT',
     signerSlot: 1,
     textContent: '',
     fontSize: DEFAULT_FONT_SIZE_PCT,
-    inputType: 'TEXT',
+    inputType,
   });
 }
 
-export function newTextFieldAt(pageNumber: number, page: PageSize, x: number, y: number): EditorField {
+export function newTextFieldAt(
+  pageNumber: number,
+  page: PageSize,
+  x: number,
+  y: number,
+  inputType: TextInput = 'TEXT',
+): EditorField {
   return blankField(pageNumber, boxAtPoint(page.width, page.height, TEXT_BOX_PX, x, y), {
     type: 'TEXT',
     signerSlot: 1,
     textContent: '',
     fontSize: DEFAULT_FONT_SIZE_PCT,
-    inputType: 'TEXT',
+    inputType,
   });
 }
