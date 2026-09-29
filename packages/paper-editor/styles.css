@@ -125,6 +125,43 @@
   pointer-events: none;
 }
 
+/* 보낼 때마다 적는 글자칸: 칸 이름만 보인다. 글자는 보낼 때 들어간다. */
+.wg-paper .wg-paper-fill {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.wg-paper .wg-paper-choices {
+  display: grid;
+  gap: 8px;
+}
+
+.wg-paper .wg-paper-choice {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 8px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.wg-paper .wg-paper-choice > span {
+  grid-column: 2;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.wg-paper .wg-paper-choice-body {
+  display: grid;
+  gap: 6px;
+  margin-left: 24px;
+}
+
 /* 날짜칸: 보내는 분이 달력으로 고른다. 글자칸과 한눈에 갈리게 색과 달력 표시를 둔다. */
 .wg-paper .wg-paper-box[data-kind='date'] {
   border-color: rgba(217, 119, 6, 0.8);
@@ -148,6 +185,14 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+/* 고른 모양이 눈에 띄게. 색만으로 가르지 않도록 굵기도 바꾼다. */
+.wg-paper .wg-paper-formats button[aria-pressed='true'] {
+  border-color: rgba(217, 119, 6, 0.9);
+  background: rgba(254, 243, 199, 0.9);
+  color: #78350f;
+  font-weight: 700;
 }
 
 .wg-paper .wg-paper-box[data-kind='signature'][data-signer='1'] {

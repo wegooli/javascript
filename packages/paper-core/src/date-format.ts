@@ -98,3 +98,59 @@ export function validateDateFormat(pattern: string): DateFormatCheck {
   }
   return { ok: false, reason: 'no_token' };
 }
+
+export type DateParts = { year: boolean; month: boolean; day: boolean };
+
+/** 모양에 연·월·일 중 무엇이 들어 있나. 비었으면 기본 모양(셋 다)이다. */
+export function dateParts(pattern?: string | null): DateParts {
+  const shape = pattern?.trim() ? pattern : DEFAULT_DATE_FORMAT;
+  const parts: DateParts = { year: false, month: false, day: false };
+  let index = 0;
+  while (index < shape.length) {
+    const token = tokenAt(shape, index);
+    if (!token) {
+      index += 1;
+      continue;
+    }
+    if (token === 'YYYY' || token === 'YY') parts.year = true;
+    else if (token === 'MM' || token === 'M') parts.month = true;
+    else parts.day = true;
+    index += token.length;
+  }
+  return parts;
+}
+
+/**
+ * 보내는 분에게 무엇을 고르게 할까. 같은 날짜를 나눠 받는 칸들의 모양을 모두 준다.
+ *
+ * 「연도만」 칸에 달력을 띄우면 월·일까지 골라야 하고, 사람은 그게 계약서에
+ * 들어가는 줄 안다. 필요한 부분만 묻는다. 셋 다이거나 월·일처럼 애매하면 달력이다.
+ */
+export type DateInputKind = 'date' | 'year-month' | 'year' | 'month' | 'day';
+
+export function dateInputKind(patterns: readonly (string | null | undefined)[]): DateInputKind {
+  const union: DateParts = { year: false, month: false, day: false };
+  for (const pattern of patterns.length > 0 ? patterns : [null]) {
+    const parts = dateParts(pattern);
+    union.year ||= parts.year;
+    union.month ||= parts.month;
+    union.day ||= parts.day;
+  }
+  if (union.year && union.month && !union.day) return 'year-month';
+  if (union.year && !union.month && !union.day) return 'year';
+  if (!union.year && union.month && !union.day) return 'month';
+  if (!union.year && !union.month && union.day) return 'day';
+  return 'date';
+}
+
+/**
+ * 고른 부분으로 `2026-10-01` 모양의 값을 만든다. 고르지 않은 부분은 채워 넣는다
+ * (연 2000, 월 1, 일 1). 그 부분은 모양에 없으니 계약서에 찍히지 않는다.
+ * 일은 1월(31일까지)에 붙이므로 「일만」 칸의 31일도 날짜가 된다.
+ */
+export function isoFromParts(parts: { year?: number; month?: number; day?: number }): string {
+  const year = String(parts.year ?? 2000).padStart(4, '0');
+  const month = String(parts.month ?? 1).padStart(2, '0');
+  const day = String(parts.day ?? 1).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}

@@ -38,8 +38,11 @@ export type { FieldOverride, MatchableField, MatchedEntry, ResolveResult } from 
 export {
   DEFAULT_DATE_FORMAT,
   MAX_DATE_FORMAT_LENGTH,
+  dateInputKind,
+  dateParts,
   formatDate,
+  isoFromParts,
   parseIsoDate,
   validateDateFormat,
 } from './date-format';
-export type { DateFormatCheck } from './date-format';
+export type { DateFormatCheck, DateInputKind, DateParts } from './date-format';

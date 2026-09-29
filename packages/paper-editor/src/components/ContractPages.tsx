@@ -322,6 +322,8 @@ function FieldBox({
           <span aria-hidden="true">📅</span>
           {field.textContent?.trim() || field.dateFormat?.trim() || DEFAULT_DATE_FORMAT}
         </span>
+      ) : field.type === 'TEXT' && field.paramKey?.trim() ? (
+        <span className="wg-paper-fill">✎ {field.label?.trim() || '보낼 때 적기'}</span>
       ) : field.type === 'TEXT' ? (
         <input
           className="wg-paper-type"

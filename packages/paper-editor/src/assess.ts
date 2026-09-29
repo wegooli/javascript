@@ -37,6 +37,16 @@ export function hasBadDateFormat(field: EditorField): boolean {
   return !validateDateFormat(pattern).ok;
 }
 
+/**
+ * 편집기가 붙인 「보낼 때 채울 이름」인가. 사람은 이 이름을 모르고, 다른 프로그램이
+ * 이 이름으로 값을 보낼 리도 없으니 「아직 쓴 적 없는 이름」으로 묻지 않는다.
+ */
+const AUTO_FILL_NAME = /^(field|date)_\d+$/;
+
+export function isAutoFillName(key: string): boolean {
+  return AUTO_FILL_NAME.test(key.trim());
+}
+
 export function isGhost(field: EditorField): boolean {
   if (field.type !== 'TEXT') return false;
   return trimmed(field.textContent) === '' && trimmed(field.paramKey) === '';
@@ -96,6 +106,7 @@ export function assessTemplateSave(
   for (const field of fields) {
     const key = normalizedKey(field);
     if (!key) continue;
+    if (isAutoFillName(key)) continue;
     const stored = normalizeParamKey(key);
     if (seen.has(stored)) continue;
     seen.add(stored);
