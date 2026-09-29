@@ -55,7 +55,10 @@ describe('날짜 모양', () => {
     expect(dateInputKind(['YYYY.MM'])).toBe('year-month');
     expect(dateInputKind(['YYYY년 M월 D일'])).toBe('date');
     expect(dateInputKind([null])).toBe('date');
-    expect(dateInputKind(['M월 D일'])).toBe('date');
+    expect(dateInputKind(['M월 D일'])).toBe('month-day');
+    // 「월만」과 「일만」을 한 날짜로 묶은 칸들
+    expect(dateInputKind(['M', 'D'])).toBe('month-day');
+    expect(dateInputKind(['YYYY', 'D'])).toBe('date');
     // 같은 날짜를 연·월·일 세 칸이 나눠 받으면 달력 하나
     expect(dateInputKind(['YYYY', 'M', 'D'])).toBe('date');
   });

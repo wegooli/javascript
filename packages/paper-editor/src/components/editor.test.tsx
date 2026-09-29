@@ -636,7 +636,10 @@ describe('계약서 화면', () => {
     fireEvent.change(screen.getByPlaceholderText('예: 계약 시작일'), { target: { value: '계약일' } });
     fireEvent.click(screen.getByRole('button', { name: '연도만' }));
     fireEvent.click(screen.getByRole('button', { name: '날짜칸 놓기' }));
+    // 이름을 먼저 붙이고 묶어도 그 이름은 남는다 — 덮어쓰면 사람이 붙인 이름이 사라진다
+    fireEvent.change(screen.getByPlaceholderText('예: 계약 시작일'), { target: { value: '계약 월' } });
     fireEvent.change(screen.getByLabelText('다른 날짜칸과 한 날짜로 묶기'), { target: { value: 'date_1' } });
+    expect(screen.getByText('보낼 때 「계약일」을 한 번 고르면 이 칸에도 들어갑니다.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '월만' }));
     expect(screen.queryByText(/같은 이름이 다른 칸에도 있습니다/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
@@ -644,7 +647,7 @@ describe('계약서 화면', () => {
     const body = update.mock.calls[0]?.[1] as { fields: Array<Record<string, unknown>> };
     expect(body.fields).toEqual([
       expect.objectContaining({ paramKey: 'date_1', label: '계약일', dateFormat: 'YYYY' }),
-      expect.objectContaining({ paramKey: 'date_1', label: '계약일', dateFormat: 'M' }),
+      expect.objectContaining({ paramKey: 'date_1', label: '계약 월', dateFormat: 'M' }),
     ]);
   });
 
@@ -665,6 +668,22 @@ describe('계약서 화면', () => {
     expect(body.fields).toEqual([
       expect.objectContaining({ paramKey: 'field_1', label: '임차인 이름', inputType: 'TEXT' }),
       expect.objectContaining({ paramKey: 'date_1', label: '계약일', inputType: 'DATE' }),
+    ]);
+  });
+
+  it('한 날짜로 묶인 칸은 그중 하나에만 이름이 있어도 저장된다', async () => {
+    const update = vi.fn().mockResolvedValue({ id: 't1' });
+    render(<TemplateEditor client={client({ updateTemplate: update })} templateId="t1" pages={pages} />);
+    fireEvent.click(await screen.findByRole('button', { name: '날짜칸 놓기' }));
+    fireEvent.change(screen.getByPlaceholderText('예: 계약 시작일'), { target: { value: '계약일' } });
+    fireEvent.click(screen.getByRole('button', { name: '날짜칸 놓기' }));
+    fireEvent.change(screen.getByLabelText('다른 날짜칸과 한 날짜로 묶기'), { target: { value: 'date_1' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    const body = update.mock.calls[0]?.[1] as { fields: Array<Record<string, unknown>> };
+    expect(body.fields.map((f) => [f.paramKey, f.label])).toEqual([
+      ['date_1', '계약일'],
+      ['date_1', null],
     ]);
   });
 });
