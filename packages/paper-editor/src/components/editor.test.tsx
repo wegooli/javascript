@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { TemplateEditor } from './TemplateEditor';
 import { TemplatePreview } from './TemplatePreview';
-import { SIGNATURE_BOX_PX, TEXT_BOX_PX, centeredPercent } from '../placement';
+import { IMAGE_BOX_PX, SIGNATURE_BOX_PX, TEXT_BOX_PX, centeredPercent } from '../placement';
 
 const pages = [{ width: 500, height: 1000 }];
 
@@ -470,5 +470,80 @@ describe('계약서 화면', () => {
     const box = await screen.findByRole('button', { name: '날짜칸' });
     expect(box).toHaveAttribute('data-kind', 'text');
     expect(screen.getByText(/날짜 1개/)).toBeInTheDocument();
+  });
+
+  it('올리는 길을 앱이 넘기지 않으면 도장·그림 단추가 없다', async () => {
+    render(<TemplateEditor client={client()} templateId="t1" pages={pages} />);
+    await screen.findByRole('button', { name: '날짜칸 놓기' });
+    expect(screen.queryByRole('button', { name: '도장·그림 놓기' })).not.toBeInTheDocument();
+  });
+
+  it('도장·그림은 앱이 올리고, 돌아온 파일 번호로 저장한다', async () => {
+    const update = vi.fn().mockResolvedValue({ id: 't1' });
+    const uploadImage = vi.fn().mockResolvedValue({
+      imageFileKey: 'images/2026/09/29/stamp.png',
+      imageMime: 'image/png',
+      previewUrl: 'https://s3.example/stamp',
+    });
+    render(
+      <TemplateEditor client={client({ updateTemplate: update })} templateId="t1" pages={pages} uploadImage={uploadImage} />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '도장·그림 놓기' }));
+    const stamp = new File([new Uint8Array([1, 2, 3])], 'stamp.png', { type: 'image/png' });
+    fireEvent.change(screen.getByLabelText('도장·그림 파일'), { target: { files: [stamp] } });
+    await waitFor(() => expect(uploadImage).toHaveBeenCalledWith(stamp));
+    const box = await screen.findByRole('button', { name: '도장·그림' });
+    expect(box.querySelector('img')).toHaveAttribute('src', 'https://s3.example/stamp');
+    const placed = percentBoxToTopLeft(centeredPercent(500, 1000, IMAGE_BOX_PX), 500, 1000);
+    expect(box).toHaveStyle({ left: `${placed.x}px`, top: `${placed.y}px` });
+
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    const body = update.mock.calls[0]?.[1] as { fields: Array<Record<string, unknown>> };
+    expect(body.fields[0]).toMatchObject({
+      type: 'IMAGE',
+      imageFileKey: 'images/2026/09/29/stamp.png',
+      imageMime: 'image/png',
+    });
+    expect(body.fields[0]).not.toHaveProperty('imageUrl');
+  });
+
+  it('PNG·JPEG가 아니거나 2MB를 넘으면 올리지 않는다', async () => {
+    const uploadImage = vi.fn();
+    render(<TemplateEditor client={client()} templateId="t1" pages={pages} uploadImage={uploadImage} />);
+    const input = await screen.findByLabelText('도장·그림 파일');
+
+    fireEvent.click(screen.getByRole('button', { name: '도장·그림 놓기' }));
+    fireEvent.change(input, { target: { files: [new File(['x'], 'a.gif', { type: 'image/gif' })] } });
+    expect(await screen.findByRole('alert')).toHaveTextContent('PNG 또는 JPEG');
+
+    fireEvent.click(screen.getByRole('button', { name: '도장·그림 놓기' }));
+    const big = new File([new Uint8Array(2 * 1024 * 1024 + 1)], 'big.png', { type: 'image/png' });
+    fireEvent.change(input, { target: { files: [big] } });
+    expect(await screen.findByRole('alert')).toHaveTextContent('2MB');
+
+    expect(uploadImage).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: '도장·그림' })).not.toBeInTheDocument();
+  });
+
+  it('도장·그림을 끌어다 놓으면 떨어뜨린 자리에 생긴다', async () => {
+    const uploadImage = vi.fn().mockResolvedValue({ imageFileKey: 'images/a.jpg', imageMime: 'image/jpeg' });
+    render(<TemplateEditor client={client()} templateId="t1" pages={pages} uploadImage={uploadImage} />);
+    await screen.findByRole('button', { name: '도장·그림 놓기' });
+    const pageEl = document.querySelector('.wg-paper-page');
+    const data = {
+      dropEffect: 'copy',
+      effectAllowed: 'copy',
+      types: ['application/x-field-type'],
+      getData: (key: string) => (key === 'application/x-field-type' ? 'IMAGE' : ''),
+    };
+    const dropEvent = new MouseEvent('drop', { bubbles: true, clientX: 200, clientY: 300 });
+    Object.defineProperty(dropEvent, 'dataTransfer', { value: data });
+    fireEvent(pageEl as Element, dropEvent);
+    const jpg = new File([new Uint8Array([1])], 'a.jpg', { type: 'image/jpeg' });
+    fireEvent.change(screen.getByLabelText('도장·그림 파일'), { target: { files: [jpg] } });
+    const box = await screen.findByRole('button', { name: '도장·그림' });
+    expect(box).toHaveStyle({ left: '140px', top: '240px' });
+    expect(box).toHaveTextContent('도장·그림');
   });
 });

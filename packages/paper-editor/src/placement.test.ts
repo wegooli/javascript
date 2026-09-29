@@ -6,7 +6,7 @@ import {
 } from '@wegooli/paper-core';
 import { describe, expect, it } from 'vitest';
 
-import { boxAtPoint, fittedBoxWidthPx, paddingOnScreen } from './placement';
+import { IMAGE_BOX_PX, boxAtPoint, fittedBoxWidthPx, imageBoxSize, paddingOnScreen } from './placement';
 
 describe('끌어다 놓은 자리', () => {
   it('떨어뜨린 점이 칸의 가운데가 되고 쪽 안에 붙는다', () => {
@@ -64,5 +64,11 @@ describe('글자 폭', () => {
         currentWidthPx: 160,
       }),
     ).toBe(160);
+  });
+
+  it('새 그림 칸은 그림 비율을 따르고, 모르면 정사각형이다', () => {
+    expect(imageBoxSize(null)).toEqual(IMAGE_BOX_PX);
+    expect(imageBoxSize({ width: 400, height: 200 })).toEqual({ width: 120, height: 60 });
+    expect(imageBoxSize({ width: 100, height: 400 })).toEqual({ width: 30, height: 120 });
   });
 });

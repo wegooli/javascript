@@ -1,6 +1,6 @@
 # @wegooli/paper-editor
 
-계약서를 읽고, 그 위에 서명란과 글자칸을 찍는 화면입니다.
+계약서를 읽고, 그 위에 서명란·글자칸·날짜칸·도장을 찍는 화면입니다.
 
 파트너의 페이지가 이 화면을 직접 그립니다. Paper 사이트를 창 안에 끼워 넣지 않습니다. 임대인 브라우저는 Paper 주소를 보지 않습니다.
 
@@ -25,6 +25,28 @@ const paper = createPaperClient({
 스타일 파일은 선택입니다. 안 가져와도 칸의 위치는 맞습니다. 가져오면 종이 위에 칸을 둔 것처럼 보입니다. 클래스 이름으로 파트너 디자인을 덮을 수 있습니다.
 
 서비스 열쇠는 이 화면에 넣지 않습니다. 열쇠는 파트너 서버에 두고, 브라우저에는 위임 토큰을 주거나 서버가 같은 메서드 모양으로 중계합니다.
+
+## 도장·그림
+
+그림을 올리는 일은 앱이 `uploadImage`로 넘깁니다. 넘기지 않으면 「도장·그림 놓기」 단추가 나오지 않습니다. 이미 있는 그림은 넘기지 않아도 보이고, 저장할 때 빠지지 않습니다.
+
+```tsx
+<TemplateEditor
+  client={paper}
+  templateId={id}
+  uploadImage={async (file) => {
+    // 앱 서버가 Paper `POST /api/upload/image`로 중계한다. 열쇠는 앱 서버에만 둔다.
+    const body = new FormData();
+    body.append('file', file);
+    const res = await fetch('/api/paper/upload-image', { method: 'POST', body });
+    if (!res.ok) throw new Error('upload failed');
+    return res.json(); // { imageFileKey, imageMime, previewUrl }
+  }}
+/>
+```
+
+- PNG 또는 JPEG, 2MB 이하만 올립니다. 그 밖의 파일은 편집기가 올리기 전에 막습니다.
+- 계약서에는 그림이 칸 크기대로 늘어나 찍힙니다. 새 칸은 그림 비율대로 만들어지고, 미리보기도 칸 크기대로 늘려 보여 줍니다.
 
 ## 날짜칸
 

@@ -116,6 +116,15 @@
   text-align: left;
 }
 
+/* 도장·그림: 계약서에 찍힐 때 칸 크기로 늘어나므로, 미리보기도 같이 늘린다. */
+.wg-paper .wg-paper-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+}
+
 /* 날짜칸: 보내는 분이 달력으로 고른다. 편집기에서는 글자를 적지 않는다. */
 .wg-paper .wg-paper-date {
   display: flex;
