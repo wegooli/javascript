@@ -45,6 +45,7 @@ const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const IMAGE_TYPE_NOTICE = 'PNG 또는 JPEG 그림만 올릴 수 있습니다.';
 const IMAGE_SIZE_NOTICE = '그림은 2MB까지 올릴 수 있습니다.';
 const IMAGE_UPLOAD_NOTICE = '그림을 올리지 못했습니다.';
+const DATE_FORMAT_NOTICE = '날짜 모양을 고쳐 주십시오. YYYY(연), M(월), D(일) 중 하나는 들어 있어야 합니다.';
 const UNNAMED_DATE_NOTICE = '날짜칸에 이름표를 적어 주십시오. 보내는 분이 무슨 날짜를 고르는지 알아야 합니다. (예: 시작일)';
 
 /** 그림의 가로세로. 읽지 못하면 null이고, 칸은 정사각형이 된다. */
@@ -219,7 +220,15 @@ export function TemplateEditor({
   const page = pages[pageIndex];
   const shownTitle = titleProp?.trim() || title;
   const selected = fields.find((field) => field.id === selectedId) ?? null;
-  const duplicates = findDuplicateParamKeys(fields.map((field) => (field.type === 'TEXT' ? field.paramKey : null)));
+  // 날짜칸끼리 같은 이름은 「한 날짜를 연·월·일로 나눠 찍기」라 경고하지 않는다
+  const duplicates = findDuplicateParamKeys(
+    fields.map((field) => (field.type === 'TEXT' ? field.paramKey : null)),
+  ).filter((key) => {
+    const sharing = fields.filter(
+      (field) => field.type === 'TEXT' && field.paramKey?.trim() && normalizeParamKey(field.paramKey.trim()) === key,
+    );
+    return !sharing.every(isDateField);
+  });
   const ghostCount = fields.filter(isGhost).length;
 
   function patchField(id: string, patch: Partial<EditorField>) {
@@ -382,8 +391,8 @@ export function TemplateEditor({
       setUnknownKeys(null);
       return;
     }
-    if (!result.ok && result.reason === 'unnamedDate') {
-      setNotice(UNNAMED_DATE_NOTICE);
+    if (!result.ok && (result.reason === 'unnamedDate' || result.reason === 'dateFormat')) {
+      setNotice(result.reason === 'dateFormat' ? DATE_FORMAT_NOTICE : UNNAMED_DATE_NOTICE);
       setUnknownKeys(null);
       setSelectedId(result.fieldId);
       const target = fields.find((field) => field.id === result.fieldId);

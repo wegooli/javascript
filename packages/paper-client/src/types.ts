@@ -21,6 +21,8 @@ export interface TemplateFieldInput {
   /** 1부터. 서명란에만 뜻이 있다. */
   signerSlot?: number;
   inputType?: FieldInputType;
+  /** 날짜칸의 모양. 예: `YYYY년 M월 D일`. 없으면 `YYYY-MM-DD`. */
+  dateFormat?: string | null;
 }
 
 /** 서버가 돌려준 칸. id와 imageUrl은 다시 저장할 때 빼야 한다. */
@@ -42,6 +44,7 @@ export interface TemplateField {
   paramKey?: string | null;
   signerSlot?: number;
   inputType?: FieldInputType | null;
+  dateFormat?: string | null;
 }
 
 export interface TemplateSigner {

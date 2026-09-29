@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import { DEFAULT_FONT_SIZE_PCT, fontSizeFromPercent, percentBoxToTopLeft } from '@wegooli/paper-core';
+import {
+  DEFAULT_DATE_FORMAT,
+  DEFAULT_FONT_SIZE_PCT,
+  fontSizeFromPercent,
+  percentBoxToTopLeft,
+} from '@wegooli/paper-core';
 
 import { isDateField } from '../assess';
 import { resizePercent, shiftPercent } from '../placement';
@@ -10,7 +15,8 @@ function joinClass(...parts: Array<string | undefined>): string {
   return parts.filter(Boolean).join(' ');
 }
 
-function kindOf(field: EditorField): 'signature' | 'text' | 'image' {
+function kindOf(field: EditorField): 'signature' | 'text' | 'date' | 'image' {
+  if (isDateField(field)) return 'date';
   if (field.type === 'TEXT') return 'text';
   if (field.type === 'IMAGE') return 'image';
   return 'signature';
@@ -312,7 +318,10 @@ function FieldBox({
     >
       {marks}
       {isDateField(field) ? (
-        <span className="wg-paper-date">{field.textContent?.trim() || '날짜 · 보낼 때 고름'}</span>
+        <span className="wg-paper-date">
+          <span aria-hidden="true">📅</span>
+          {field.textContent?.trim() || field.dateFormat?.trim() || DEFAULT_DATE_FORMAT}
+        </span>
       ) : field.type === 'TEXT' ? (
         <input
           className="wg-paper-type"

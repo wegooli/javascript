@@ -1,5 +1,5 @@
 /**
- * `@wegooli/paper-core` — 칸의 위치, 글자 폭, 이름표를 재는 자.
+ * `@wegooli/paper-core` — 칸의 위치, 글자 폭, 이름표, 날짜 모양을 재는 자.
  *
  * 종이를 그리지 않고, 화면을 기억하지 않고, 서버에 말을 걸지 않는다.
  * 읽고 고치는 화면은 이 패키지가 아니다.
@@ -34,3 +34,12 @@ export {
   validateParams,
 } from './param-key';
 export type { FieldOverride, MatchableField, MatchedEntry, ResolveResult } from './param-key';
+
+export {
+  DEFAULT_DATE_FORMAT,
+  MAX_DATE_FORMAT_LENGTH,
+  formatDate,
+  parseIsoDate,
+  validateDateFormat,
+} from './date-format';
+export type { DateFormatCheck } from './date-format';

@@ -1,9 +1,34 @@
 import { useState } from 'react';
-import { normalizeParamKey, validateParamKey } from '@wegooli/paper-core';
+import {
+  DEFAULT_DATE_FORMAT,
+  formatDate,
+  normalizeParamKey,
+  validateDateFormat,
+  validateParamKey,
+} from '@wegooli/paper-core';
 
 import type { EditorField } from '../types';
 
 const FORMAT_NOTICE = '영문으로 시작하고, 영문·숫자·밑줄·하이픈만, 64자 이하';
+
+/** 미리보기 날짜. 월·일이 한 자리라 M과 MM, D와 DD의 차이가 보인다. */
+const SAMPLE_DATE = '2026-03-05';
+
+/** 자주 쓰는 모양. 「20__년 __월 __일」처럼 칸이 나뉜 양식은 연·월·일을 따로 쓴다. */
+const DATE_PRESETS: readonly { pattern: string; name: string }[] = [
+  { pattern: 'YYYY-MM-DD', name: '2026-03-05' },
+  { pattern: 'YYYY년 M월 D일', name: '2026년 3월 5일' },
+  { pattern: 'YYYY. M. D.', name: '2026. 3. 5.' },
+  { pattern: 'YYYY', name: '연도만' },
+  { pattern: 'M', name: '월만' },
+  { pattern: 'D', name: '일만' },
+];
+
+const DATE_FORMAT_NOTICE: Record<'empty' | 'too_long' | 'no_token', string> = {
+  empty: '',
+  too_long: '모양은 40자까지 적을 수 있습니다.',
+  no_token: 'YYYY(연), M·MM(월), D·DD(일) 중 하나는 들어 있어야 합니다.',
+};
 
 export function RequiredToggle({
   field,
@@ -200,6 +225,11 @@ export function DateFills({
   const key = field.paramKey?.trim() ?? '';
   const label = field.label?.trim() ?? '';
   const fixedDate = field.textContent?.trim() ?? '';
+  const pattern = field.dateFormat ?? '';
+  const shape = pattern.trim() ? pattern : DEFAULT_DATE_FORMAT;
+  const check = pattern.trim() ? validateDateFormat(pattern) : ({ ok: true } as const);
+  // 같은 날짜를 나눠 찍을 다른 날짜칸. 이름이 같으면 보낼 때 달력이 하나만 뜬다.
+  const partners = sharedDateKeys(field, fields);
 
   return (
     <div className={['wg-paper-side', 'wg-paper-who', className].filter(Boolean).join(' ')}>
@@ -219,7 +249,7 @@ export function DateFills({
         label ? (
           <p className="wg-paper-note">
             <b>보낼 때 채웁니다.</b> 새 계약서 화면에서 「{label}」을 달력으로 고르고, 계약서에는
-            2026-10-01처럼 찍힙니다.
+            아래 모양으로 찍힙니다.
           </p>
         ) : (
           <p className="wg-paper-warn">
@@ -240,6 +270,62 @@ export function DateFills({
           </button>
         </div>
       )}
+      {partners.length > 0 && (
+        <label>
+          다른 날짜칸과 같은 날짜 쓰기
+          <select
+            value={partners.some((item) => item.key === key) ? key : ''}
+            onChange={(event) => {
+              const picked = partners.find((item) => item.key === event.target.value);
+              if (picked) onPatch({ paramKey: picked.key, label: picked.label });
+              else onAskSender();
+            }}
+          >
+            <option value="">따로 고름</option>
+            {partners.map((item) => (
+              <option key={item.key} value={item.key}>
+                {item.label ?? item.key}와 같은 날짜
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <div className="wg-paper-date-format">
+        <label>
+          계약서에 찍힐 모양
+          <input
+            value={pattern}
+            maxLength={40}
+            placeholder={DEFAULT_DATE_FORMAT}
+            aria-invalid={!check.ok}
+            onChange={(event) => onPatch({ dateFormat: event.target.value || null })}
+          />
+        </label>
+        <div className="wg-paper-formats" role="group" aria-label="자주 쓰는 모양">
+          {DATE_PRESETS.map((preset) => (
+            <button
+              key={preset.pattern}
+              type="button"
+              aria-pressed={shape === preset.pattern}
+              onClick={() => onPatch({ dateFormat: preset.pattern })}
+            >
+              {preset.name}
+            </button>
+          ))}
+        </div>
+        {check.ok ? (
+          <p className="wg-paper-note">
+            3월 5일을 고르면 <b className="wg-paper-date-sample">{formatDate(SAMPLE_DATE, shape)}</b>
+          </p>
+        ) : (
+          <p className="wg-paper-warn">{DATE_FORMAT_NOTICE[check.reason]}</p>
+        )}
+        <p className="wg-paper-note">
+          YYYY는 연도, M·MM은 월, D·DD는 일로 바뀌고 나머지 글자는 그대로 찍힙니다. 「20__년
+          __월 __일」처럼 칸이 나뉜 양식은 칸마다 연도만·월만·일만 고르고, 같은 연동 이름을
+          붙이면 한 번 고른 날짜가 세 칸에 나뉘어 찍힙니다.
+        </p>
+      </div>
       <AdvancedKey
         field={field}
         fields={fields}
@@ -252,6 +338,23 @@ export function DateFills({
       </button>
     </div>
   );
+}
+
+/** 이 칸 말고, 보낼 때 채우는 다른 날짜칸의 이름. 한 이름에 하나만. */
+function sharedDateKeys(
+  field: EditorField,
+  fields: readonly EditorField[],
+): { key: string; label: string | null }[] {
+  const byKey = new Map<string, string | null>();
+  for (const other of fields) {
+    if (other.id === field.id || other.type !== 'TEXT' || other.inputType !== 'DATE') continue;
+    const otherKey = other.paramKey?.trim();
+    if (!otherKey) continue;
+    if (!byKey.has(otherKey) || (!byKey.get(otherKey) && other.label?.trim())) {
+      byKey.set(otherKey, other.label?.trim() || null);
+    }
+  }
+  return [...byKey].map(([key, label]) => ({ key, label }));
 }
 
 function suggestionKeys(

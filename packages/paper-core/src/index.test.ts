@@ -358,8 +358,13 @@ describe('패키지 경계', () => {
     const keys = Object.keys(api).filter((key) => !key.startsWith('_')).sort();
     expect(keys).toEqual(
       [
+        'DEFAULT_DATE_FORMAT',
         'DEFAULT_FONT_SIZE_PCT',
+        'MAX_DATE_FORMAT_LENGTH',
         'MAX_PARAM_VALUE_LENGTH',
+        'formatDate',
+        'parseIsoDate',
+        'validateDateFormat',
         'PARAM_KEY_INPUT_REGEX',
         'PARAM_KEY_STORAGE_REGEX',
         'SPACE_STAND_IN',
