@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type DragEvent as ReactDragEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent as ReactChangeEvent,
+  type DragEvent as ReactDragEvent,
+} from 'react';
 import {
   DEFAULT_FONT_SIZE_PCT,
   findDuplicateParamKeys,
@@ -9,10 +15,11 @@ import {
 } from '@wegooli/paper-core';
 import { PaperApiError, type TemplateDetail, type TemplateSigner } from '@wegooli/paper-client';
 
-import { assessTemplateSave, isGhost } from '../assess';
+import { assessTemplateSave, isDateField, isGhost } from '../assess';
 import { readPdfPages, thumbnailBlob, usePdfPages, closePdfPages } from '../pdf-pages';
 import {
   fittedBoxWidthPx,
+  newImageField,
   newSignatureField,
   newSignatureFieldAt,
   newTextField,
@@ -21,9 +28,9 @@ import {
 import { fromWire, toFieldPayload, toUpdateBody } from '../payload';
 import { displayNames, dropSignaturesBeyond, namedSigners, peopleFrom } from '../signers';
 import type { EditorField, TemplateEditorProps } from '../types';
-import { ContractPages } from './ContractPages';
+import { ContractPages, type PlaceTool } from './ContractPages';
 import { SignerPeople } from './SignerPeople';
-import { RequiredToggle, WhoFills } from './WhoFills';
+import { DateFills, RequiredToggle, WhoFills } from './WhoFills';
 
 const GHOST_NOTICE =
   '이 글자칸은 비어 있어 저장할 수 없습니다. 문구를 적거나, 보낼 때 채우는 이름을 붙이세요.';
@@ -33,16 +40,35 @@ const CONFIRM_NOTICE =
 const CATALOG_NOTICE = '이름 목록을 가져오지 못해 저장하지 않았습니다';
 const FORMAT_NOTICE = '영문으로 시작하고, 영문·숫자·밑줄·하이픈만, 64자 이하';
 const DUPLICATE_NOTICE = '같은 이름이 다른 칸에도 있습니다. 두 칸에 같은 값이 들어갑니다.';
+const IMAGE_MIME = new Set(['image/png', 'image/jpeg']);
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const IMAGE_TYPE_NOTICE = 'PNG 또는 JPEG 그림만 올릴 수 있습니다.';
+const IMAGE_SIZE_NOTICE = '그림은 2MB까지 올릴 수 있습니다.';
+const IMAGE_UPLOAD_NOTICE = '그림을 올리지 못했습니다.';
+const UNNAMED_DATE_NOTICE = '날짜칸에 이름표를 적어 주십시오. 보내는 분이 무슨 날짜를 고르는지 알아야 합니다. (예: 시작일)';
+
+/** 그림의 가로세로. 읽지 못하면 null이고, 칸은 정사각형이 된다. */
+async function naturalSize(file: File): Promise<{ width: number; height: number } | null> {
+  if (typeof createImageBitmap !== 'function') return null;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const size = { width: bitmap.width, height: bitmap.height };
+    bitmap.close();
+    return size;
+  } catch {
+    return null;
+  }
+}
 
 function joinClass(...parts: Array<string | undefined>): string {
   return parts.filter(Boolean).join(' ');
 }
 
-function nextFillName(fields: readonly EditorField[]): string {
+function nextFillName(fields: readonly EditorField[], prefix = 'field'): string {
   const used = new Set(fields.map((field) => field.paramKey).filter((key): key is string => !!key));
   let n = 1;
-  while (used.has(`field_${n}`)) n += 1;
-  return `field_${n}`;
+  while (used.has(`${prefix}_${n}`)) n += 1;
+  return `${prefix}_${n}`;
 }
 
 export function TemplateEditor({
@@ -52,6 +78,7 @@ export function TemplateEditor({
   title: titleProp,
   expectedParamKeys,
   onSaved,
+  uploadImage,
   classNames,
   pages: pagesProp,
 }: TemplateEditorProps) {
@@ -74,6 +101,9 @@ export function TemplateEditor({
   const [knownKeys, setKnownKeys] = useState<readonly { key: string; label: string | null }[] | null>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
   const draggedTool = useRef(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const pendingImage = useRef<{ pageIndex: number; at?: { x: number; y: number } } | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   function adopt(detail: TemplateDetail) {
     const nextFields = detail.fields.map((field, index) => fromWire(field, index));
@@ -195,28 +225,81 @@ export function TemplateEditor({
     patchField(id, patch);
   }
 
-  function addField(type: 'SIGNATURE' | 'TEXT', at?: { x: number; y: number }) {
+  function addField(tool: PlaceTool, at?: { x: number; y: number }) {
     if (!page) return;
+    if (tool === 'IMAGE') {
+      pickImage(at);
+      return;
+    }
     const slot = activeSigner + 1;
-    const created =
-      type === 'SIGNATURE'
+    const input = tool === 'DATE' ? 'DATE' : 'TEXT';
+    const placed =
+      tool === 'SIGNATURE'
         ? at
           ? newSignatureFieldAt(pageIndex + 1, page, at.x, at.y, slot)
           : newSignatureField(pageIndex + 1, page, slot)
         : at
-          ? newTextFieldAt(pageIndex + 1, page, at.x, at.y)
-          : newTextField(pageIndex + 1, page);
+          ? newTextFieldAt(pageIndex + 1, page, at.x, at.y, input)
+          : newTextField(pageIndex + 1, page, input);
+    // 날짜칸은 보내는 분이 달력으로 채운다. 양식에 박힌 날짜로 두지 않는다.
+    const created = tool === 'DATE' ? { ...placed, paramKey: nextFillName(fields, 'date') } : placed;
     setFields((current) => [...current, created]);
     setSelectedId(created.id);
   }
 
-  function onToolDragStart(event: ReactDragEvent<HTMLButtonElement>, type: 'SIGNATURE' | 'TEXT') {
+  function pickImage(at?: { x: number; y: number }) {
+    if (!uploadImage || uploading) return;
+    pendingImage.current = { pageIndex, ...(at ? { at } : {}) };
+    setNotice(null);
+    imageInputRef.current?.click();
+  }
+
+  async function onImageChosen(event: ReactChangeEvent<HTMLInputElement>) {
+    const chosen = event.target.files?.[0];
+    event.target.value = '';
+    const target = pendingImage.current;
+    pendingImage.current = null;
+    if (!chosen || !target || !uploadImage) return;
+    if (!IMAGE_MIME.has(chosen.type)) {
+      setNotice(IMAGE_TYPE_NOTICE);
+      return;
+    }
+    if (chosen.size > MAX_IMAGE_BYTES) {
+      setNotice(IMAGE_SIZE_NOTICE);
+      return;
+    }
+    const targetPage = pages[target.pageIndex];
+    if (!targetPage) return;
+    setUploading(true);
+    try {
+      const [uploaded, natural] = await Promise.all([uploadImage(chosen), naturalSize(chosen)]);
+      const created = newImageField(
+        target.pageIndex + 1,
+        targetPage,
+        {
+          imageFileKey: uploaded.imageFileKey,
+          imageMime: uploaded.imageMime,
+          imageUrl: uploaded.previewUrl ?? null,
+        },
+        target.at,
+        natural,
+      );
+      setFields((current) => [...current, created]);
+      setSelectedId(created.id);
+    } catch (error) {
+      setNotice(error instanceof PaperApiError && error.message ? error.message : IMAGE_UPLOAD_NOTICE);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function onToolDragStart(event: ReactDragEvent<HTMLButtonElement>, type: PlaceTool) {
     draggedTool.current = true;
     event.dataTransfer.setData('application/x-field-type', type);
     event.dataTransfer.effectAllowed = 'copy';
   }
 
-  function onToolClick(type: 'SIGNATURE' | 'TEXT') {
+  function onToolClick(type: PlaceTool) {
     if (draggedTool.current) {
       draggedTool.current = false;
       return;
@@ -285,6 +368,14 @@ export function TemplateEditor({
     if (!result.ok && result.reason === 'ghost') {
       setNotice(GHOST_NOTICE);
       setUnknownKeys(null);
+      return;
+    }
+    if (!result.ok && result.reason === 'unnamedDate') {
+      setNotice(UNNAMED_DATE_NOTICE);
+      setUnknownKeys(null);
+      setSelectedId(result.fieldId);
+      const target = fields.find((field) => field.id === result.fieldId);
+      if (target) setPageIndex(target.pageNumber - 1);
       return;
     }
     if (!result.ok && result.reason === 'invalid') {
@@ -377,6 +468,7 @@ export function TemplateEditor({
   const signatureCount = fields.filter((field) => field.type === 'SIGNATURE').length;
   const imageCount = fields.filter((field) => field.type === 'IMAGE').length;
   const textCount = fields.filter((field) => field.type === 'TEXT').length;
+  const dateCount = fields.filter(isDateField).length;
 
   return (
     <div className={joinClass('wg-paper', classNames?.root)}>
@@ -440,6 +532,43 @@ export function TemplateEditor({
                 </button>
                 <button
                   type="button"
+                  draggable
+                  onDragStart={(event) => onToolDragStart(event, 'DATE')}
+                  onDragEnd={() => {
+                    window.setTimeout(() => {
+                      draggedTool.current = false;
+                    }, 0);
+                  }}
+                  onClick={() => onToolClick('DATE')}
+                >
+                  날짜칸 놓기
+                </button>
+                {uploadImage && (
+                  <button
+                    type="button"
+                    draggable
+                    disabled={uploading}
+                    onDragStart={(event) => onToolDragStart(event, 'IMAGE')}
+                    onDragEnd={() => {
+                      window.setTimeout(() => {
+                        draggedTool.current = false;
+                      }, 0);
+                    }}
+                    onClick={() => onToolClick('IMAGE')}
+                  >
+                    {uploading ? '그림 올리는 중' : '도장·그림 놓기'}
+                  </button>
+                )}
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  aria-label="도장·그림 파일"
+                  hidden
+                  onChange={(event) => void onImageChosen(event)}
+                />
+                <button
+                  type="button"
                   className={joinClass('wg-paper-primary', classNames?.primaryButton)}
                   disabled={busy}
                   onClick={() => void handleSave(false)}
@@ -476,7 +605,8 @@ export function TemplateEditor({
               <p className="wg-paper-tally">
                 서명 {signatureCount}개
                 {imageCount > 0 ? ` · 이미지 ${imageCount}개` : ''}
-                {textCount > 0 ? ` · 텍스트 ${textCount}개` : ''} 배치됨
+                {textCount - dateCount > 0 ? ` · 텍스트 ${textCount - dateCount}개` : ''}
+                {dateCount > 0 ? ` · 날짜 ${dateCount}개` : ''} 배치됨
                 {ghostCount > 0 && <span className="wg-paper-ghost"> · 채울 수 없는 칸 {ghostCount}개</span>}
               </p>
             )}
@@ -516,7 +646,23 @@ export function TemplateEditor({
                 물어봅니다.
               </p>
             )}
-            {selected && !systemLocked && selected.type === 'TEXT' && (
+            {selected && !systemLocked && isDateField(selected) && (
+              <DateFills
+                key={selected.id}
+                className={classNames?.sidePanel}
+                field={selected}
+                fields={fields}
+                knownKeys={knownKeys}
+                duplicate={selectedDuplicate}
+                onPatch={(patch) => patchField(selected.id, patch)}
+                onAskSender={() => patchField(selected.id, { paramKey: nextFillName(fields, 'date') })}
+                onDelete={() => {
+                  setFields((current) => current.filter((field) => field.id !== selected.id));
+                  setSelectedId(null);
+                }}
+              />
+            )}
+            {selected && !systemLocked && selected.type === 'TEXT' && !isDateField(selected) && (
               <WhoFills
                   key={selected.id}
                   className={classNames?.sidePanel}
@@ -564,7 +710,24 @@ export function TemplateEditor({
                 </button>
               </div>
             )}
-            {selected && selected.type === 'IMAGE' && <p>이 그림은 그대로 저장됩니다.</p>}
+            {selected && selected.type === 'IMAGE' && systemLocked && <p>이 그림은 그대로 저장됩니다.</p>}
+            {selected && !systemLocked && selected.type === 'IMAGE' && (
+              <div className={joinClass('wg-paper-side', classNames?.sidePanel)}>
+                <p className="wg-paper-note">
+                  <b>도장·그림입니다.</b> 이 양식으로 만든 계약서마다 이 자리에 그대로 찍힙니다. 칸 크기대로
+                  늘어나니, 모서리를 끌어 크기를 맞춰 주십시오.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFields((current) => current.filter((field) => field.id !== selected.id));
+                    setSelectedId(null);
+                  }}
+                >
+                  이 칸 지우기
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -14,6 +14,7 @@ import type { EditorField, PageSize } from './types';
 
 export const SIGNATURE_BOX_PX = { width: 150, height: 60 };
 export const TEXT_BOX_PX = { width: 160, height: 36 };
+export const IMAGE_BOX_PX = { width: 120, height: 120 };
 
 export function centeredBox(
   viewportWidth: number,
@@ -166,22 +167,59 @@ export function newSignatureFieldAt(
   });
 }
 
-export function newTextField(pageNumber: number, page: PageSize): EditorField {
+/** 날짜칸은 종류가 아니다. 글자칸의 넣는 방법만 날짜다. */
+export type TextInput = 'TEXT' | 'DATE';
+
+export function newTextField(pageNumber: number, page: PageSize, inputType: TextInput = 'TEXT'): EditorField {
   return blankField(pageNumber, centeredPercent(page.width, page.height, TEXT_BOX_PX), {
     type: 'TEXT',
     signerSlot: 1,
     textContent: '',
     fontSize: DEFAULT_FONT_SIZE_PCT,
-    inputType: 'TEXT',
+    inputType,
   });
 }
 
-export function newTextFieldAt(pageNumber: number, page: PageSize, x: number, y: number): EditorField {
+export function newTextFieldAt(
+  pageNumber: number,
+  page: PageSize,
+  x: number,
+  y: number,
+  inputType: TextInput = 'TEXT',
+): EditorField {
   return blankField(pageNumber, boxAtPoint(page.width, page.height, TEXT_BOX_PX, x, y), {
     type: 'TEXT',
     signerSlot: 1,
     textContent: '',
     fontSize: DEFAULT_FONT_SIZE_PCT,
-    inputType: 'TEXT',
+    inputType,
   });
+}
+
+/**
+ * 계약서에는 그림이 칸 크기로 늘어나 찍힌다. 새 칸은 그림 비율대로 만들어 찌그러지지 않게 한다.
+ * 비율을 모르면 정사각형이다.
+ */
+export function imageBoxSize(natural?: { width: number; height: number } | null): {
+  width: number;
+  height: number;
+} {
+  if (!natural || !(natural.width > 0) || !(natural.height > 0)) return IMAGE_BOX_PX;
+  const side = Math.max(IMAGE_BOX_PX.width, IMAGE_BOX_PX.height);
+  const ratio = natural.width / natural.height;
+  return ratio >= 1 ? { width: side, height: side / ratio } : { width: side * ratio, height: side };
+}
+
+export function newImageField(
+  pageNumber: number,
+  page: PageSize,
+  image: { imageFileKey: string; imageMime: string; imageUrl: string | null },
+  at?: { x: number; y: number },
+  natural?: { width: number; height: number } | null,
+): EditorField {
+  const size = imageBoxSize(natural);
+  const box = at
+    ? boxAtPoint(page.width, page.height, size, at.x, at.y)
+    : centeredPercent(page.width, page.height, size);
+  return blankField(pageNumber, box, { type: 'IMAGE', signerSlot: 1, ...image });
 }

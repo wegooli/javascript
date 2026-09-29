@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { DEFAULT_FONT_SIZE_PCT, fontSizeFromPercent, percentBoxToTopLeft } from '@wegooli/paper-core';
 
+import { isDateField } from '../assess';
 import { resizePercent, shiftPercent } from '../placement';
 import { signerColorSlot } from '../signers';
 import type { EditorClassNames, EditorField, PageSize } from '../types';
@@ -15,9 +16,13 @@ function kindOf(field: EditorField): 'signature' | 'text' | 'image' {
   return 'signature';
 }
 
+/** 도구막대에서 끌어 오는 것. 날짜는 칸의 종류가 아니라 글자칸의 넣는 방법이다. */
+export type PlaceTool = 'SIGNATURE' | 'TEXT' | 'DATE' | 'IMAGE';
+
 function labelOf(field: EditorField): string {
+  if (isDateField(field)) return '날짜칸';
   if (field.type === 'TEXT') return '글자칸';
-  if (field.type === 'IMAGE') return '그림';
+  if (field.type === 'IMAGE') return '도장·그림';
   return '서명란';
 }
 
@@ -36,7 +41,7 @@ interface ContractPagesProps {
   onNext: () => void;
   /** 1번부터 순서대로. 두 명 이상일 때만 칸 위에 이름을 띄운다. */
   signerNames?: readonly string[];
-  onPlace?: (type: 'SIGNATURE' | 'TEXT', x: number, y: number) => void;
+  onPlace?: (tool: PlaceTool, x: number, y: number) => void;
 }
 
 export function ContractPages({
@@ -108,7 +113,7 @@ export function ContractPages({
             onDrop={(event) => {
               if (readOnly || !onPlace) return;
               const type = event.dataTransfer?.getData('application/x-field-type');
-              if (type !== 'SIGNATURE' && type !== 'TEXT') return;
+              if (type !== 'SIGNATURE' && type !== 'TEXT' && type !== 'DATE' && type !== 'IMAGE') return;
               event.preventDefault();
               const rect = event.currentTarget.getBoundingClientRect();
               const sx = rect.width > 0 ? page.width / rect.width : 1;
@@ -223,7 +228,11 @@ function FieldBox({
     return (
       <div className={classNames} data-kind={kindOf(field)} data-signer={signerMark} style={style}>
         {marks}
-        {labelOf(field)}
+        {field.type === 'IMAGE' && field.imageUrl ? (
+          <img className="wg-paper-image" src={field.imageUrl} alt={labelOf(field)} draggable={false} />
+        ) : (
+          labelOf(field)
+        )}
       </div>
     );
   }
@@ -302,7 +311,9 @@ function FieldBox({
       onPointerCancel={onPointerCancel}
     >
       {marks}
-      {field.type === 'TEXT' ? (
+      {isDateField(field) ? (
+        <span className="wg-paper-date">{field.textContent?.trim() || '날짜 · 보낼 때 고름'}</span>
+      ) : field.type === 'TEXT' ? (
         <input
           className="wg-paper-type"
           aria-label="글자칸 내용"
@@ -312,9 +323,11 @@ function FieldBox({
           onClick={(event) => event.stopPropagation()}
           onChange={(event) => onChangeField(field.id, { textContent: event.target.value })}
         />
+      ) : field.type === 'IMAGE' && field.imageUrl ? (
+        <img className="wg-paper-image" src={field.imageUrl} alt="" draggable={false} />
       ) : (
         <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-          {field.type === 'IMAGE' ? '이미지' : '서명'}
+          {field.type === 'IMAGE' ? '도장·그림' : '서명'}
         </span>
       )}
       <span

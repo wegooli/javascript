@@ -38,6 +38,14 @@ export interface EditorClassNames {
   primaryButton?: string;
 }
 
+/** 앱이 그림을 올린 결과. Paper `POST /api/upload/image`의 응답 모양이다. */
+export interface UploadedImage {
+  imageFileKey: string;
+  imageMime: string;
+  /** 미리보기 주소. 없으면 칸에 그림 대신 글자를 띄운다. */
+  previewUrl?: string | null;
+}
+
 export interface TemplateEditorProps {
   client: PaperTemplates;
   templateId?: string;
@@ -50,6 +58,11 @@ export interface TemplateEditorProps {
    */
   expectedParamKeys?: readonly string[];
   onSaved?: (id: string) => void;
+  /**
+   * 도장·그림을 올리는 일. 앱이 넘긴다. 없으면 도장·그림 놓기 단추가 나오지 않는다.
+   * 열쇠가 필요한 앱은 자기 서버가 중계한다. 편집기는 열쇠를 모른다.
+   */
+  uploadImage?: (file: File) => Promise<UploadedImage>;
   classNames?: EditorClassNames;
   /** 테스트를 위해 페이지 크기를 직접 준다. 있으면 PDF를 해석하지 않는다. */
   pages?: readonly PageSize[];
