@@ -88,7 +88,18 @@ export function assessTemplateSave(
     return { ok: false, reason: 'dateFormat', fieldId: badFormat.id, duplicates };
   }
 
-  const unnamedDate = fields.find(isUnnamedDate);
+  // 한 날짜로 묶인 칸들은 그중 하나에만 이름이 있어도 된다 — 보낼 때 그 이름으로 묻는다
+  const unnamedDate = fields.find(
+    (field) =>
+      isUnnamedDate(field) &&
+      !fields.some(
+        (other) =>
+          other.id !== field.id &&
+          isDateField(other) &&
+          trimmed(other.paramKey) === trimmed(field.paramKey) &&
+          trimmed(other.label) !== '',
+      ),
+  );
   if (unnamedDate) {
     return { ok: false, reason: 'unnamedDate', fieldId: unnamedDate.id, duplicates };
   }

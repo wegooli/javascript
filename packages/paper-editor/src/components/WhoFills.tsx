@@ -279,7 +279,8 @@ export function DateFills({
                 value={joined ? key : ''}
                 onChange={(event) => {
                   const picked = partners.find((item) => item.key === event.target.value);
-                  if (picked) onPatch({ paramKey: picked.key, label: picked.label });
+                  // 이 칸의 이름은 그대로 둔다. 덮어쓰면 사람이 붙인 이름이 사라진다
+                  if (picked) onPatch({ paramKey: picked.key });
                   else onAskSender();
                 }}
               >
@@ -292,20 +293,21 @@ export function DateFills({
               </select>
             </label>
           )}
-          {!joined && (
-            <label>
-              칸 이름
-              <input
-                value={field.label ?? ''}
-                maxLength={200}
-                placeholder="예: 계약 시작일"
-                aria-invalid={label === ''}
-                onChange={(event) => onPatch({ label: event.target.value || null })}
-              />
-            </label>
-          )}
+          <label>
+            칸 이름{joined ? ' (선택)' : ''}
+            <input
+              value={field.label ?? ''}
+              maxLength={200}
+              placeholder="예: 계약 시작일"
+              aria-invalid={!joined && label === ''}
+              onChange={(event) => onPatch({ label: event.target.value || null })}
+            />
+          </label>
           {joined ? (
-            <p className="wg-paper-note">보낼 때 「{label}」을 한 번 고르면 이 칸에도 들어갑니다.</p>
+            <p className="wg-paper-note">
+              보낼 때 「{partners.find((item) => item.key === key)?.label ?? key}」을 한 번 고르면 이 칸에도
+              들어갑니다.
+            </p>
           ) : label ? (
             <p className="wg-paper-note">보낼 때 「{label}」을 물어봅니다.</p>
           ) : (

@@ -124,9 +124,10 @@ export function dateParts(pattern?: string | null): DateParts {
  * 보내는 분에게 무엇을 고르게 할까. 같은 날짜를 나눠 받는 칸들의 모양을 모두 준다.
  *
  * 「연도만」 칸에 달력을 띄우면 월·일까지 골라야 하고, 사람은 그게 계약서에
- * 들어가는 줄 안다. 필요한 부분만 묻는다. 셋 다이거나 월·일처럼 애매하면 달력이다.
+ * 들어가는 줄 안다. 필요한 부분만 묻는다. 연·월·일이 모두 필요할 때만 달력이다.
+ * 「월만」 칸과 「일만」 칸을 한 날짜로 묶으면 월과 일을 나란히 묻는다.
  */
-export type DateInputKind = 'date' | 'year-month' | 'year' | 'month' | 'day';
+export type DateInputKind = 'date' | 'year-month' | 'month-day' | 'year' | 'month' | 'day';
 
 export function dateInputKind(patterns: readonly (string | null | undefined)[]): DateInputKind {
   const union: DateParts = { year: false, month: false, day: false };
@@ -137,6 +138,7 @@ export function dateInputKind(patterns: readonly (string | null | undefined)[]):
     union.day ||= parts.day;
   }
   if (union.year && union.month && !union.day) return 'year-month';
+  if (!union.year && union.month && union.day) return 'month-day';
   if (union.year && !union.month && !union.day) return 'year';
   if (!union.year && union.month && !union.day) return 'month';
   if (!union.year && !union.month && union.day) return 'day';
