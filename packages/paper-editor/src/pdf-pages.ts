@@ -41,31 +41,47 @@ const openDocuments = new WeakMap<readonly PageSize[], () => Promise<void>>();
  * pdfjs는 전역 pdfjsWorker가 있으면 버전을 따지지 않고 그 워커를 쓴다.
  * 파트너 페이지에 다른 버전의 pdfjs(react-pdf 등)가 있으면, 전역을 남겨 두는 순간
  * 그쪽 PDF가 "API 버전과 워커 버전이 다르다"로 열리지 않는다. 페이지를 옮겨도 남는다.
- * 그래서 문서를 여는 그 한 줄 동안만 올리고 바로 되돌린다.
+ *
+ * 전역을 채우는 것은 둘이다. 이 패키지가 문서를 열 때, 그리고 **워커 파일 자신**이
+ * 처음 불러와지는 순간(`pdf.worker.mjs` 머리의 `globalThis.pdfjsWorker = {}`).
+ * 그래서 되돌릴 값은 워커 파일을 부르기 **전에** 적어 두고, 부른 직후와 문서를
+ * 연 직후에 그 값으로 돌려놓는다.
  * 이 버전의 pdfjs는 여는 순간 워커를 읽어 자기 안에 기억하므로, 되돌려도 계속 읽힌다.
  */
-function withMainThreadWorker<T>(handler: unknown, open: () => T): T {
+type GlobalSnapshot = { had: boolean; value: WorkerGlobal['pdfjsWorker'] };
+
+function snapshotGlobal(): GlobalSnapshot {
   const scope = globalThis as WorkerGlobal;
-  const had = Object.prototype.hasOwnProperty.call(scope, 'pdfjsWorker');
-  const previous = scope.pdfjsWorker;
-  scope.pdfjsWorker = { WorkerMessageHandler: handler };
-  try {
-    return open();
-  } finally {
-    if (had) scope.pdfjsWorker = previous;
-    else delete scope.pdfjsWorker;
-  }
+  return {
+    had: Object.prototype.hasOwnProperty.call(scope, 'pdfjsWorker'),
+    value: scope.pdfjsWorker,
+  };
+}
+
+function restoreGlobal(snapshot: GlobalSnapshot): void {
+  const scope = globalThis as WorkerGlobal;
+  if (snapshot.had) scope.pdfjsWorker = snapshot.value;
+  else delete scope.pdfjsWorker;
 }
 
 export async function readPdfPages(data: ArrayBuffer): Promise<PageSize[]> {
+  const before = snapshotGlobal();
   const worker = await import('pdfjs-dist/build/pdf.worker.mjs');
+  // 워커 파일이 처음 불러와지며 채운 전역을 바로 치운다
+  restoreGlobal(before);
   const pdfjs = (await import('pdfjs-dist')) as unknown as PdfjsModule;
-  const task = withMainThreadWorker(worker.WorkerMessageHandler, () =>
-    pdfjs.getDocument({
+  const scope = globalThis as WorkerGlobal;
+  const around = snapshotGlobal();
+  scope.pdfjsWorker = { WorkerMessageHandler: worker.WorkerMessageHandler };
+  let task: LoadingTask;
+  try {
+    task = pdfjs.getDocument({
       data: new Uint8Array(data),
       isEvalSupported: false,
-    }),
-  );
+    });
+  } finally {
+    restoreGlobal(around);
+  }
   try {
     const doc = await task.promise;
     const pages: PageSize[] = [];
