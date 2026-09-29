@@ -14,15 +14,16 @@ export interface UsePhoneOTPReturn {
  * publishable_key (org context). Uses the SMS provider configured at the
  * server (defaults to LogSMSSender in dev — codes appear in BFF stdout).
  */
-export function usePhoneOTP(): UsePhoneOTPReturn {
+export function usePhoneOTP(opts?: { intent?: 'sign-in' | 'sign-up' }): UsePhoneOTPReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const intent = opts?.intent;
 
   const send = useCallback(async (phone: string): Promise<void> => {
     setIsLoading(true);
     setError(null);
     try {
-      await bffClient.post('/api/auth/phone-otp/send', { phone });
+      await bffClient.post('/api/auth/phone-otp/send', intent ? { phone, intent } : { phone });
     } catch (err) {
       const e = toIdentityError(err);
       setError(e);
@@ -30,7 +31,7 @@ export function usePhoneOTP(): UsePhoneOTPReturn {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [intent]);
 
   const verify = useCallback(async (phone: string, code: string): Promise<void> => {
     setIsLoading(true);
@@ -38,7 +39,7 @@ export function usePhoneOTP(): UsePhoneOTPReturn {
     try {
       const res = await bffClient.post<{ status: string; redirectUrl?: string; access_token?: string }>(
         '/api/auth/phone-otp/verify',
-        { phone, code },
+        intent ? { phone, code, intent } : { phone, code },
       );
       // Tenant flow returns access_token; persist for Authorization: Bearer use.
       if (res.access_token) {
@@ -54,7 +55,7 @@ export function usePhoneOTP(): UsePhoneOTPReturn {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [intent]);
 
   return { send, verify, isLoading, error };
 }

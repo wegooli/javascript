@@ -72,6 +72,8 @@ export const ko: AuthLabels = {
     },
     byCode: {
       // 사람이 고칠 수 있는 것
+      account_not_found: '등록된 계정이 없습니다. 가입하기에서 새 계정을 만드세요.',
+      account_exists: '이미 계정이 있습니다. 로그인하세요.',
       invalid_email: '이메일 주소 형식이 맞지 않습니다. 다시 확인해 주세요.',
       invalid_phone: '휴대폰 번호 형식이 맞지 않습니다. 국가번호(+82)까지 넣어 주세요.',
       invalid_body: '넣은 내용을 다시 확인해 주세요.',
