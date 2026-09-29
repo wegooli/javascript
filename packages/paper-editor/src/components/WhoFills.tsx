@@ -30,11 +30,18 @@ const DATE_FORMAT_NOTICE: Record<'empty' | 'too_long' | 'no_token', string> = {
   no_token: 'YYYY(연), M·MM(월), D·DD(일) 중 하나는 들어 있어야 합니다.',
 };
 
+function panelClass(className?: string): string {
+  return ['wg-paper-side', 'wg-paper-who', className].filter(Boolean).join(' ');
+}
+
+/** 비워 둘 수 있나. 누가 채우는 칸이냐에 따라 문장만 다르다. */
 export function RequiredToggle({
   field,
+  who,
   onChange,
 }: {
   field: EditorField;
+  who: 'sender' | 'signer';
   onChange: (required: boolean) => void;
 }) {
   return (
@@ -44,16 +51,20 @@ export function RequiredToggle({
         checked={field.required}
         onChange={(event) => onChange(event.target.checked)}
       />
-      필수 입력
-      <span>서명하는 사람이 반드시 채워야 합니다. 끄면 비워도 됩니다.</span>
+      {who === 'sender' ? '꼭 적어야 하는 칸' : '꼭 서명해야 하는 칸'}
+      <span>
+        {who === 'sender'
+          ? '보내는 분이 비워 두면 계약서를 보낼 수 없습니다.'
+          : '서명하는 분이 비워 두면 서명을 마칠 수 없습니다.'}
+      </span>
     </label>
   );
 }
 
 /**
- * 글자칸은 셋 중 하나다.
- * 보낼 때 채우는 칸, 양식에 박힌 문구, 아무도 못 채우는 칸.
- * 마지막은 저장되지 않는다.
+ * 글자칸에 무엇이 들어가나. 둘 중 하나다.
+ * 보낼 때마다 적기(보낼 때 채울 이름이 있다), 항상 같은 글자(양식에 박힌 문구).
+ * 보낼 때 채울 이름은 사람이 몰라도 되게 편집기가 붙인다. 사람은 칸 이름만 적는다.
  */
 export function WhoFills({
   field,
@@ -74,56 +85,79 @@ export function WhoFills({
   onDelete: () => void;
   className?: string;
 }) {
-  const key = field.paramKey?.trim() ?? '';
+  const filling = (field.paramKey?.trim() ?? '') !== '';
   const label = field.label?.trim() ?? '';
-  const hasFixedText = !!field.textContent?.trim();
+  const group = `wg-fill-${field.id}`;
 
   return (
-    <div className={['wg-paper-side', 'wg-paper-who', className].filter(Boolean).join(' ')}>
-      <h2>이 칸은 누가 채우나</h2>
-      <RequiredToggle field={field} onChange={(required) => onPatch({ required })} />
-      <label>
-        이름표 (선택)
-        <input
-          value={field.label ?? ''}
-          maxLength={200}
-          placeholder="예: 입실기간"
-          onChange={(event) => onPatch({ label: event.target.value || null })}
+    <div className={panelClass(className)}>
+      <h2>이 칸에 무엇이 들어가나요?</h2>
+      <div role="radiogroup" aria-label="이 칸에 무엇이 들어가나요?" className="wg-paper-choices">
+        <label className="wg-paper-choice">
+          <input type="radio" name={group} checked={filling} onChange={() => onAskSender()} />
+          <b>보낼 때마다 적기</b>
+          <span>계약서를 보내는 분이 매번 적습니다.</span>
+        </label>
+        {filling && (
+          <div className="wg-paper-choice-body">
+            <label>
+              칸 이름
+              <input
+                value={field.label ?? ''}
+                maxLength={200}
+                placeholder="예: 임차인 이름"
+                aria-invalid={label === ''}
+                onChange={(event) => onPatch({ label: event.target.value || null })}
+              />
+            </label>
+            {label ? (
+              <p className="wg-paper-note">보낼 때 「{label}」을 물어봅니다.</p>
+            ) : (
+              <p className="wg-paper-warn">
+                <b>칸 이름을 적어 주십시오.</b> 보내는 분이 이 이름을 보고 적습니다.
+              </p>
+            )}
+            <RequiredToggle field={field} who="sender" onChange={(required) => onPatch({ required })} />
+          </div>
+        )}
+        <label className="wg-paper-choice">
+          <input
+            type="radio"
+            name={group}
+            checked={!filling}
+            onChange={() => onPatch({ paramKey: null, required: false })}
+          />
+          <b>항상 같은 글자</b>
+          <span>이 양식으로 만드는 모든 계약서에 똑같이 들어갑니다.</span>
+        </label>
+        {!filling && (
+          <div className="wg-paper-choice-body">
+            <label>
+              들어갈 글자
+              <input
+                value={field.textContent ?? ''}
+                placeholder="예: 서울특별시 강남구 …"
+                aria-invalid={!field.textContent?.trim()}
+                onChange={(event) => onPatch({ textContent: event.target.value })}
+              />
+            </label>
+            {!field.textContent?.trim() && (
+              <p className="wg-paper-warn">
+                <b>들어갈 글자를 적어 주십시오.</b> 비어 있으면 저장되지 않습니다.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+      {filling && (
+        <AdvancedKey
+          field={field}
+          fields={fields}
+          knownKeys={knownKeys}
+          duplicate={duplicate}
+          onPatch={onPatch}
         />
-      </label>
-      {key ? (
-        label ? (
-          <p className="wg-paper-note">
-            <b>보낼 때 채웁니다.</b> 새 계약서 화면에 「{label}」 칸이 생깁니다.
-          </p>
-        ) : (
-          <p className="wg-paper-warn">
-            <b>보낼 때 채웁니다.</b> 다만 새 계약서 화면이 「{key}」라고 물어봅니다 — 위에{' '}
-            <b>이름표를 적어 주십시오.</b>
-          </p>
-        )
-      ) : hasFixedText ? (
-        <p className="wg-paper-note">
-          <b>양식에 박힌 문구입니다.</b> 이 양식으로 만든 계약서마다 그대로 나옵니다.
-        </p>
-      ) : (
-        <div className="wg-paper-warn">
-          <p>
-            <b>지금은 아무도 채울 수 없는 칸입니다.</b> 글자를 적어 두면 양식에 박히고, 아래 단추를
-            누르면 보낼 때 채우는 칸이 됩니다.
-          </p>
-          <button type="button" onClick={onAskSender}>
-            보낼 때 채우게 하기
-          </button>
-        </div>
       )}
-      <AdvancedKey
-        field={field}
-        fields={fields}
-        knownKeys={knownKeys}
-        duplicate={duplicate}
-        onPatch={onPatch}
-      />
       <button type="button" onClick={onDelete}>
         이 칸 지우기
       </button>
@@ -131,7 +165,10 @@ export function WhoFills({
   );
 }
 
-/** 다른 시스템이 이 칸을 채울 때 쓰는 이름. 글자칸과 날짜칸이 같이 쓴다. */
+/**
+ * 다른 프로그램이 이 칸에 값을 넣을 때 쓰는 영문 이름. 개발자만 본다.
+ * 연결하지 않으면 편집기가 붙인 이름(field_1, date_1 …) 그대로 두면 된다.
+ */
 function AdvancedKey({
   field,
   fields,
@@ -157,13 +194,12 @@ function AdvancedKey({
         aria-expanded={advancedOpen}
         onClick={() => setAdvancedOpen((open) => !open)}
       >
-        {advancedOpen ? '▾' : '▸'} 고급 · 외부 연동
-        {key && <span className="wg-paper-key">{key}</span>}
+        {advancedOpen ? '▾' : '▸'} 다른 프로그램과 연결 (개발자용)
       </button>
       {advancedOpen && (
         <div className="wg-paper-advanced-body">
           <label>
-            연동 이름표
+            연결 이름
             <input
               value={field.paramKey ?? ''}
               maxLength={64}
@@ -173,8 +209,7 @@ function AdvancedKey({
             />
           </label>
           <p className="wg-paper-note">
-            다른 시스템이 이 칸을 채울 때 쓰는 이름입니다. 연동 없이 직접 채우실 거면 이름은 아무거나
-            괜찮습니다.
+            다른 프로그램이 이 칸에 값을 넣을 때 쓰는 영문 이름입니다. 연결하지 않으면 그대로 두십시오.
           </p>
           <datalist id={`paramkey-${field.id}`}>
             {suggestions.map((item) => (
@@ -183,9 +218,6 @@ function AdvancedKey({
               </option>
             ))}
           </datalist>
-          {knownKeys !== null && knownKeys.length === 0 && suggestions.length === 0 && (
-            <p className="wg-paper-note">연동 없음 — 맞출 이름이 없으니 그대로 두셔도 됩니다.</p>
-          )}
           {key !== '' && !keyOk && <p className="wg-paper-warn">{FORMAT_NOTICE}</p>}
           {keyOk && normalizeParamKey(key) !== key && (
             <p className="wg-paper-note">저장하면 {normalizeParamKey(key)} 로 맞춰집니다.</p>
@@ -200,7 +232,7 @@ function AdvancedKey({
 }
 
 /**
- * 날짜칸. 보내는 분이 달력에서 고르고, 계약서에는 2026-10-01 같은 글자가 찍힌다.
+ * 날짜칸. 보내는 분이 고르고, 계약서에는 정한 모양대로 찍힌다.
  * 서명하는 분이 고르는 칸이 아니다.
  */
 export function DateFills({
@@ -228,34 +260,61 @@ export function DateFills({
   const pattern = field.dateFormat ?? '';
   const shape = pattern.trim() ? pattern : DEFAULT_DATE_FORMAT;
   const check = pattern.trim() ? validateDateFormat(pattern) : ({ ok: true } as const);
-  // 같은 날짜를 나눠 찍을 다른 날짜칸. 이름이 같으면 보낼 때 달력이 하나만 뜬다.
+  const isPreset = DATE_PRESETS.some((preset) => preset.pattern === shape);
+  const [customOpen, setCustomOpen] = useState(!isPreset);
+  // 한 날짜를 나눠 찍을 다른 날짜칸. 묶으면 보낼 때 한 번만 고른다.
   const partners = sharedDateKeys(field, fields);
+  const joined = partners.some((item) => item.key === key);
 
   return (
-    <div className={['wg-paper-side', 'wg-paper-who', className].filter(Boolean).join(' ')}>
+    <div className={panelClass(className)}>
       <h2>날짜칸</h2>
-      <RequiredToggle field={field} onChange={(required) => onPatch({ required })} />
-      <label>
-        이름표
-        <input
-          value={field.label ?? ''}
-          maxLength={200}
-          placeholder="예: 시작일"
-          aria-invalid={key !== '' && label === ''}
-          onChange={(event) => onPatch({ label: event.target.value || null })}
-        />
-      </label>
+      <p className="wg-paper-note">계약서를 보내는 분이 고릅니다.</p>
       {key ? (
-        label ? (
-          <p className="wg-paper-note">
-            <b>보낼 때 채웁니다.</b> 새 계약서 화면에서 「{label}」을 달력으로 고르고, 계약서에는
-            아래 모양으로 찍힙니다.
-          </p>
-        ) : (
-          <p className="wg-paper-warn">
-            <b>이름표를 적어 주십시오.</b> 보내는 분이 무슨 날짜를 고르는지 알아야 합니다.
-          </p>
-        )
+        <>
+          {partners.length > 0 && (
+            <label>
+              다른 날짜칸과 한 날짜로 묶기
+              <select
+                value={joined ? key : ''}
+                onChange={(event) => {
+                  const picked = partners.find((item) => item.key === event.target.value);
+                  if (picked) onPatch({ paramKey: picked.key, label: picked.label });
+                  else onAskSender();
+                }}
+              >
+                <option value="">묶지 않음 — 따로 고름</option>
+                {partners.map((item) => (
+                  <option key={item.key} value={item.key}>
+                    「{item.label ?? item.key}」와 한 날짜
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {!joined && (
+            <label>
+              칸 이름
+              <input
+                value={field.label ?? ''}
+                maxLength={200}
+                placeholder="예: 계약 시작일"
+                aria-invalid={label === ''}
+                onChange={(event) => onPatch({ label: event.target.value || null })}
+              />
+            </label>
+          )}
+          {joined ? (
+            <p className="wg-paper-note">보낼 때 「{label}」을 한 번 고르면 이 칸에도 들어갑니다.</p>
+          ) : label ? (
+            <p className="wg-paper-note">보낼 때 「{label}」을 물어봅니다.</p>
+          ) : (
+            <p className="wg-paper-warn">
+              <b>칸 이름을 적어 주십시오.</b> 보내는 분이 무슨 날짜를 고르는지 알아야 합니다.
+            </p>
+          )}
+          <RequiredToggle field={field} who="sender" onChange={(required) => onPatch({ required })} />
+        </>
       ) : fixedDate ? (
         <p className="wg-paper-note">
           <b>양식에 박힌 날짜입니다.</b> 이 양식으로 만든 계약서마다 {fixedDate}(이)가 그대로 나옵니다.
@@ -263,56 +322,52 @@ export function DateFills({
       ) : (
         <div className="wg-paper-warn">
           <p>
-            <b>지금은 아무도 채울 수 없는 칸입니다.</b>
+            <b>보내는 분이 고르게 하려면 아래를 누르십시오.</b>
           </p>
           <button type="button" onClick={onAskSender}>
-            보낼 때 채우게 하기
+            보낼 때 고르게 하기
           </button>
         </div>
       )}
-      {partners.length > 0 && (
-        <label>
-          다른 날짜칸과 같은 날짜 쓰기
-          <select
-            value={partners.some((item) => item.key === key) ? key : ''}
-            onChange={(event) => {
-              const picked = partners.find((item) => item.key === event.target.value);
-              if (picked) onPatch({ paramKey: picked.key, label: picked.label });
-              else onAskSender();
-            }}
-          >
-            <option value="">따로 고름</option>
-            {partners.map((item) => (
-              <option key={item.key} value={item.key}>
-                {item.label ?? item.key}와 같은 날짜
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
       <div className="wg-paper-date-format">
-        <label>
-          계약서에 찍힐 모양
-          <input
-            value={pattern}
-            maxLength={40}
-            placeholder={DEFAULT_DATE_FORMAT}
-            aria-invalid={!check.ok}
-            onChange={(event) => onPatch({ dateFormat: event.target.value || null })}
-          />
-        </label>
-        <div className="wg-paper-formats" role="group" aria-label="자주 쓰는 모양">
+        <p className="wg-paper-note">
+          <b>계약서에 어떻게 찍을까요?</b>
+        </p>
+        <div className="wg-paper-formats" role="group" aria-label="날짜 모양">
           {DATE_PRESETS.map((preset) => (
             <button
               key={preset.pattern}
               type="button"
               aria-pressed={shape === preset.pattern}
-              onClick={() => onPatch({ dateFormat: preset.pattern })}
+              onClick={() => {
+                setCustomOpen(false);
+                onPatch({ dateFormat: preset.pattern });
+              }}
             >
               {preset.name}
             </button>
           ))}
+          <button type="button" aria-pressed={customOpen} onClick={() => setCustomOpen(true)}>
+            직접 적기
+          </button>
         </div>
+        {customOpen && (
+          <>
+            <label>
+              모양 직접 적기
+              <input
+                value={pattern}
+                maxLength={40}
+                placeholder={DEFAULT_DATE_FORMAT}
+                aria-invalid={!check.ok}
+                onChange={(event) => onPatch({ dateFormat: event.target.value || null })}
+              />
+            </label>
+            <p className="wg-paper-note">
+              YYYY는 연도, M·MM은 월, D·DD는 일로 바뀌고 나머지 글자는 그대로 찍힙니다.
+            </p>
+          </>
+        )}
         {check.ok ? (
           <p className="wg-paper-note">
             3월 5일을 고르면 <b className="wg-paper-date-sample">{formatDate(SAMPLE_DATE, shape)}</b>
@@ -321,18 +376,19 @@ export function DateFills({
           <p className="wg-paper-warn">{DATE_FORMAT_NOTICE[check.reason]}</p>
         )}
         <p className="wg-paper-note">
-          YYYY는 연도, M·MM은 월, D·DD는 일로 바뀌고 나머지 글자는 그대로 찍힙니다. 「20__년
-          __월 __일」처럼 칸이 나뉜 양식은 칸마다 연도만·월만·일만 고르고, 같은 연동 이름을
-          붙이면 한 번 고른 날짜가 세 칸에 나뉘어 찍힙니다.
+          「20__년 __월 __일」처럼 칸이 나뉜 양식은 칸마다 연도만·월만·일만 고르고, 한 날짜로
+          묶으면 보낼 때 한 번만 고릅니다.
         </p>
       </div>
-      <AdvancedKey
-        field={field}
-        fields={fields}
-        knownKeys={knownKeys}
-        duplicate={duplicate}
-        onPatch={onPatch}
-      />
+      {key && (
+        <AdvancedKey
+          field={field}
+          fields={fields}
+          knownKeys={knownKeys}
+          duplicate={duplicate}
+          onPatch={onPatch}
+        />
+      )}
       <button type="button" onClick={onDelete}>
         이 칸 지우기
       </button>

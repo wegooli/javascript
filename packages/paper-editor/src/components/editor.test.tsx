@@ -95,9 +95,7 @@ describe('계약서 화면', () => {
     render(<TemplateEditor client={paper} templateId="t1" pages={pages} />);
     fireEvent.click(await screen.findByRole('button', { name: '저장하기' }));
     expect(update).not.toHaveBeenCalled();
-    expect(
-      screen.getByText('이 글자칸은 비어 있어 저장할 수 없습니다. 문구를 적거나, 보낼 때 채우는 이름을 붙이세요.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/비어 있는 글자칸이 있어 저장하지 않았습니다/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '그래도 저장' })).not.toBeInTheDocument();
   });
 
@@ -168,8 +166,8 @@ describe('계약서 화면', () => {
     fireEvent.click(await screen.findByRole('button', { name: '글자칸' }));
     fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
     expect(await screen.findByText('new_rent')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /고급 · 외부 연동/ }));
-    fireEvent.change(screen.getByLabelText('연동 이름표'), { target: { value: 'other_name' } });
+    fireEvent.click(screen.getByRole('button', { name: /다른 프로그램과 연결/ }));
+    fireEvent.change(screen.getByLabelText('연결 이름'), { target: { value: 'other_name' } });
     fireEvent.click(screen.getByRole('button', { name: '그래도 저장' }));
     expect(await screen.findByText('other_name')).toBeInTheDocument();
     expect(update).not.toHaveBeenCalled();
@@ -302,6 +300,7 @@ describe('계약서 화면', () => {
     fireEvent.click(await screen.findByRole('button', { name: '서명칸 놓기' }));
     fireEvent.click(screen.getByRole('button', { name: '글자칸 놓기' }));
     fireEvent.click(screen.getByRole('button', { name: '글자칸' }));
+    fireEvent.click(screen.getByRole('radio', { name: /항상 같은 글자/ }));
     fireEvent.change(screen.getByLabelText('글자칸 내용'), { target: { value: '월세' } });
     fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
     await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
@@ -314,6 +313,7 @@ describe('계약서 화면', () => {
     expect(body.fields.find((field) => field.type === 'TEXT')).toMatchObject({
       ...centeredPercent(500, 1000, TEXT_BOX_PX),
       textContent: '월세',
+      paramKey: null,
     });
   });
 
@@ -420,11 +420,14 @@ describe('계약서 화면', () => {
     });
     render(<TemplateEditor client={paper} templateId="t1" pages={pages} />);
     fireEvent.click(await screen.findByRole('button', { name: '글자칸' }));
-    expect(screen.getByRole('heading', { name: '이 칸은 누가 채우나' })).toBeInTheDocument();
-    expect(screen.getByText(/지금은 아무도 채울 수 없는 칸입니다/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '보낼 때 채우게 하기' }));
-    expect(screen.getByText(/보낼 때 채웁니다/)).toBeInTheDocument();
-    expect(screen.getByText(/이름표를 적어 주십시오/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '이 칸에 무엇이 들어가나요?' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /항상 같은 글자/ })).toBeChecked();
+    expect(screen.getByText('들어갈 글자를 적어 주십시오.', { selector: 'b' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: /보낼 때마다 적기/ }));
+    expect(screen.getByText(/칸 이름을 적어 주십시오/)).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('예: 임차인 이름'), { target: { value: '임차인 이름' } });
+    expect(screen.getByText('보낼 때 「임차인 이름」을 물어봅니다.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '글자칸' })).toHaveTextContent('✎ 임차인 이름');
   });
 
   it('날짜칸은 글자칸의 넣는 방법으로 놓이고, 이름표가 있어야 저장된다', async () => {
@@ -436,11 +439,11 @@ describe('계약서 화면', () => {
     expect(screen.getByRole('button', { name: '날짜칸' })).toHaveTextContent('📅YYYY-MM-DD');
 
     fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('날짜칸에 이름표를 적어 주십시오');
+    expect(await screen.findByRole('alert')).toHaveTextContent('날짜칸의 칸 이름을 적어 주십시오');
     expect(update).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByPlaceholderText('예: 시작일'), { target: { value: '시작일' } });
-    expect(screen.getByText(/「시작일」을 달력으로 고르고/)).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('예: 계약 시작일'), { target: { value: '시작일' } });
+    expect(screen.getByText('보낼 때 「시작일」을 물어봅니다.')).toBeInTheDocument();
     expect(screen.getByText('2026-03-05', { selector: 'b' })).toHaveClass('wg-paper-date-sample');
     fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
     await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
@@ -596,11 +599,12 @@ describe('계약서 화면', () => {
       <TemplateEditor client={client({ updateTemplate: update })} templateId="t1" pages={pages} expectedParamKeys={['date_1']} />,
     );
     fireEvent.click(await screen.findByRole('button', { name: '날짜칸 놓기' }));
-    fireEvent.change(screen.getByPlaceholderText('예: 시작일'), { target: { value: '계약일' } });
+    fireEvent.change(screen.getByPlaceholderText('예: 계약 시작일'), { target: { value: '계약일' } });
     fireEvent.click(screen.getByRole('button', { name: '2026년 3월 5일' }));
     expect(screen.getByText('2026년 3월 5일', { selector: 'b' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '날짜칸' })).toHaveTextContent('YYYY년 M월 D일');
-    fireEvent.change(screen.getByLabelText('계약서에 찍힐 모양'), { target: { value: 'YY.MM' } });
+    fireEvent.click(screen.getByRole('button', { name: '직접 적기' }));
+    fireEvent.change(screen.getByLabelText('모양 직접 적기'), { target: { value: 'YY.MM' } });
     expect(screen.getByText('26.03', { selector: 'b' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
     await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
@@ -614,8 +618,9 @@ describe('계약서 화면', () => {
       <TemplateEditor client={client({ updateTemplate: update })} templateId="t1" pages={pages} expectedParamKeys={['date_1']} />,
     );
     fireEvent.click(await screen.findByRole('button', { name: '날짜칸 놓기' }));
-    fireEvent.change(screen.getByPlaceholderText('예: 시작일'), { target: { value: '계약일' } });
-    fireEvent.change(screen.getByLabelText('계약서에 찍힐 모양'), { target: { value: '년 월 일' } });
+    fireEvent.change(screen.getByPlaceholderText('예: 계약 시작일'), { target: { value: '계약일' } });
+    fireEvent.click(screen.getByRole('button', { name: '직접 적기' }));
+    fireEvent.change(screen.getByLabelText('모양 직접 적기'), { target: { value: '년 월 일' } });
     expect(screen.getByText(/중 하나는 들어 있어야 합니다/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('날짜 모양을 고쳐 주십시오');
@@ -628,10 +633,10 @@ describe('계약서 화면', () => {
       <TemplateEditor client={client({ updateTemplate: update })} templateId="t1" pages={pages} expectedParamKeys={['date_1']} />,
     );
     fireEvent.click(await screen.findByRole('button', { name: '날짜칸 놓기' }));
-    fireEvent.change(screen.getByPlaceholderText('예: 시작일'), { target: { value: '계약일' } });
+    fireEvent.change(screen.getByPlaceholderText('예: 계약 시작일'), { target: { value: '계약일' } });
     fireEvent.click(screen.getByRole('button', { name: '연도만' }));
     fireEvent.click(screen.getByRole('button', { name: '날짜칸 놓기' }));
-    fireEvent.change(screen.getByLabelText('다른 날짜칸과 같은 날짜 쓰기'), { target: { value: 'date_1' } });
+    fireEvent.change(screen.getByLabelText('다른 날짜칸과 한 날짜로 묶기'), { target: { value: 'date_1' } });
     fireEvent.click(screen.getByRole('button', { name: '월만' }));
     expect(screen.queryByText(/같은 이름이 다른 칸에도 있습니다/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
@@ -640,6 +645,26 @@ describe('계약서 화면', () => {
     expect(body.fields).toEqual([
       expect.objectContaining({ paramKey: 'date_1', label: '계약일', dateFormat: 'YYYY' }),
       expect.objectContaining({ paramKey: 'date_1', label: '계약일', dateFormat: 'M' }),
+    ]);
+  });
+
+  it('새 글자칸은 「보낼 때마다 적기」로 시작하고, 편집기가 붙인 이름은 확인을 묻지 않는다', async () => {
+    const update = vi.fn().mockResolvedValue({ id: 't1' });
+    // 회사가 쓴 이름이 하나도 없어도 — 편집기가 붙인 이름은 대조할 대상이 아니다
+    const paper = client({ updateTemplate: update, listParamKeys: vi.fn().mockResolvedValue({ keys: [] }) });
+    render(<TemplateEditor client={paper} templateId="t1" pages={pages} />);
+    fireEvent.click(await screen.findByRole('button', { name: '글자칸 놓기' }));
+    expect(screen.getByRole('radio', { name: /보낼 때마다 적기/ })).toBeChecked();
+    fireEvent.change(screen.getByPlaceholderText('예: 임차인 이름'), { target: { value: '임차인 이름' } });
+    fireEvent.click(screen.getByRole('button', { name: '날짜칸 놓기' }));
+    fireEvent.change(screen.getByPlaceholderText('예: 계약 시작일'), { target: { value: '계약일' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    const body = update.mock.calls[0]?.[1] as { fields: Array<Record<string, unknown>> };
+    expect(body.fields).toEqual([
+      expect.objectContaining({ paramKey: 'field_1', label: '임차인 이름', inputType: 'TEXT' }),
+      expect.objectContaining({ paramKey: 'date_1', label: '계약일', inputType: 'DATE' }),
     ]);
   });
 });

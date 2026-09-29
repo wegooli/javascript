@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_DATE_FORMAT, formatDate, parseIsoDate, validateDateFormat } from './date-format';
+import {
+  DEFAULT_DATE_FORMAT,
+  dateInputKind,
+  formatDate,
+  isoFromParts,
+  parseIsoDate,
+  validateDateFormat,
+} from './date-format';
 
 describe('날짜 모양', () => {
   it('모양을 안 적으면 예전처럼 2026-10-01이다', () => {
@@ -39,5 +46,24 @@ describe('날짜 모양', () => {
     expect(validateDateFormat('  ')).toEqual({ ok: false, reason: 'empty' });
     expect(validateDateFormat('년 월 일')).toEqual({ ok: false, reason: 'no_token' });
     expect(validateDateFormat('Y'.repeat(41))).toEqual({ ok: false, reason: 'too_long' });
+  });
+
+  it('모양에 맞춰 무엇을 물을지 고른다', () => {
+    expect(dateInputKind(['YYYY'])).toBe('year');
+    expect(dateInputKind(['M'])).toBe('month');
+    expect(dateInputKind(['DD'])).toBe('day');
+    expect(dateInputKind(['YYYY.MM'])).toBe('year-month');
+    expect(dateInputKind(['YYYY년 M월 D일'])).toBe('date');
+    expect(dateInputKind([null])).toBe('date');
+    expect(dateInputKind(['M월 D일'])).toBe('date');
+    // 같은 날짜를 연·월·일 세 칸이 나눠 받으면 달력 하나
+    expect(dateInputKind(['YYYY', 'M', 'D'])).toBe('date');
+  });
+
+  it('고른 부분만으로 값을 만들어도 모양대로 찍힌다', () => {
+    expect(formatDate(isoFromParts({ year: 2026 }), 'YYYY')).toBe('2026');
+    expect(formatDate(isoFromParts({ month: 3 }), 'M월')).toBe('3월');
+    expect(formatDate(isoFromParts({ day: 31 }), 'D')).toBe('31');
+    expect(formatDate(isoFromParts({ year: 2026, month: 12 }), 'YYYY.MM')).toBe('2026.12');
   });
 });

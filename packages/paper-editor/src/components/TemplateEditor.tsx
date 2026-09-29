@@ -15,7 +15,7 @@ import {
 } from '@wegooli/paper-core';
 import { PaperApiError, type TemplateDetail, type TemplateSigner } from '@wegooli/paper-client';
 
-import { assessTemplateSave, isDateField, isGhost } from '../assess';
+import { assessTemplateSave, isAutoFillName, isDateField, isGhost } from '../assess';
 import { readPdfPages, thumbnailBlob, usePdfPages, closePdfPages } from '../pdf-pages';
 import {
   fittedBoxWidthPx,
@@ -33,7 +33,7 @@ import { SignerPeople } from './SignerPeople';
 import { DateFills, RequiredToggle, WhoFills } from './WhoFills';
 
 const GHOST_NOTICE =
-  '이 글자칸은 비어 있어 저장할 수 없습니다. 문구를 적거나, 보낼 때 채우는 이름을 붙이세요.';
+  '비어 있는 글자칸이 있어 저장하지 않았습니다. 칸을 눌러 「보낼 때마다 적기」로 바꾸거나, 들어갈 글자를 적어 주십시오.';
 const SYSTEM_NOTICE = '기본으로 들어 있는 양식은 고칠 수 없습니다. 우리 양식으로 복사한 뒤 고치세요.';
 const CONFIRM_NOTICE =
   '이 회사에서 아직 쓴 적이 없는 이름입니다. 값을 보내는 쪽과 글자가 다르면 계약서가 만들어지지 않습니다. 그래도 저장할까요?';
@@ -46,7 +46,7 @@ const IMAGE_TYPE_NOTICE = 'PNG 또는 JPEG 그림만 올릴 수 있습니다.';
 const IMAGE_SIZE_NOTICE = '그림은 2MB까지 올릴 수 있습니다.';
 const IMAGE_UPLOAD_NOTICE = '그림을 올리지 못했습니다.';
 const DATE_FORMAT_NOTICE = '날짜 모양을 고쳐 주십시오. YYYY(연), M(월), D(일) 중 하나는 들어 있어야 합니다.';
-const UNNAMED_DATE_NOTICE = '날짜칸에 이름표를 적어 주십시오. 보내는 분이 무슨 날짜를 고르는지 알아야 합니다. (예: 시작일)';
+const UNNAMED_DATE_NOTICE = '날짜칸의 칸 이름을 적어 주십시오. 보내는 분이 무슨 날짜를 고르는지 알아야 합니다. (예: 계약 시작일)';
 
 /** 그림의 가로세로. 읽지 못하면 null이고, 칸은 정사각형이 된다. */
 async function naturalSize(file: File): Promise<{ width: number; height: number } | null> {
@@ -262,8 +262,14 @@ export function TemplateEditor({
         : at
           ? newTextFieldAt(pageIndex + 1, page, at.x, at.y, input)
           : newTextField(pageIndex + 1, page, input);
-    // 날짜칸은 보내는 분이 달력으로 채운다. 양식에 박힌 날짜로 두지 않는다.
-    const created = tool === 'DATE' ? { ...placed, paramKey: nextFillName(fields, 'date') } : placed;
+    // 새 글자칸·날짜칸은 「보낼 때마다 적기」로 시작한다. 보낼 때 채울 이름은 편집기가
+    // 붙이고, 사람은 칸 이름만 적는다. 「항상 같은 글자」는 설명판에서 고른다.
+    const created =
+      tool === 'DATE'
+        ? { ...placed, paramKey: nextFillName(fields, 'date') }
+        : tool === 'TEXT'
+          ? { ...placed, paramKey: nextFillName(fields, 'field') }
+          : placed;
     setFields((current) => [...current, created]);
     setSelectedId(created.id);
   }
@@ -367,7 +373,10 @@ export function TemplateEditor({
   }
 
   async function catalogForSave(): Promise<readonly string[] | null | undefined> {
-    const hasKey = fields.some((field) => field.type === 'TEXT' && field.paramKey?.trim());
+    // 편집기가 붙인 이름뿐이면 대조할 것이 없다
+    const hasKey = fields.some(
+      (field) => field.type === 'TEXT' && field.paramKey?.trim() && !isAutoFillName(field.paramKey),
+    );
     if (!hasKey) return null;
     if (expectedParamKeys !== undefined) return expectedParamKeys;
     try {
@@ -666,10 +675,7 @@ export function TemplateEditor({
               </div>
             )}
             {!systemLocked && !selected && textCount > 0 && (
-              <p className="wg-paper-hint">
-                글자칸을 누르면 이름을 붙일 수 있습니다. 이름을 붙여 두면 이 양식으로 보낼 때 그 이름으로 값을
-                물어봅니다.
-              </p>
+              <p className="wg-paper-hint">칸을 누르면 그 칸에 무엇이 들어갈지 정할 수 있습니다.</p>
             )}
             {selected && !systemLocked && isDateField(selected) && (
               <DateFills
@@ -695,8 +701,10 @@ export function TemplateEditor({
                   fields={fields}
                   knownKeys={knownKeys}
                   duplicate={selectedDuplicate}
-                  onPatch={(patch) => patchField(selected.id, patch)}
-                  onAskSender={() => patchField(selected.id, { paramKey: nextFillName(fields) })}
+                  onPatch={(patch) => changeField(selected.id, patch)}
+                  onAskSender={() =>
+                    patchField(selected.id, { paramKey: nextFillName(fields), textContent: '' })
+                  }
                   onDelete={() => {
                     setFields((current) => current.filter((field) => field.id !== selected.id));
                     setSelectedId(null);
@@ -705,7 +713,11 @@ export function TemplateEditor({
             )}
             {selected && !systemLocked && selected.type === 'SIGNATURE' && (
               <div className="wg-paper-side">
-                <RequiredToggle field={selected} onChange={(required) => patchField(selected.id, { required })} />
+                <RequiredToggle
+                  field={selected}
+                  who="signer"
+                  onChange={(required) => patchField(selected.id, { required })}
+                />
                 {signerCount > 1 && (
                   <div>
                     <p className="wg-paper-note">이 서명은 누구 것인가요</p>
