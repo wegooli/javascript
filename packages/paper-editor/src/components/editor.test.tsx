@@ -546,4 +546,46 @@ describe('계약서 화면', () => {
     expect(box).toHaveStyle({ left: '140px', top: '240px' });
     expect(box).toHaveTextContent('도장·그림');
   });
+
+  it('이름이 바뀌어도 찍어 둔 칸은 남고, 저장할 때 마지막 이름과 설명을 보낸다', async () => {
+    const create = vi.fn().mockResolvedValue({ id: 'new', title: '새 이름' });
+    const paper = client({ createTemplate: create });
+    const file = new File(['%PDF'], 'lease.pdf', { type: 'application/pdf' });
+    const { rerender } = render(<TemplateEditor client={paper} file={file} title="처음" pages={pages} />);
+    fireEvent.click(await screen.findByRole('button', { name: '서명칸 놓기' }));
+    rerender(<TemplateEditor client={paper} file={file} title="새 이름" description="입주용" pages={pages} />);
+    expect(screen.getByRole('button', { name: '서명란' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '새 이름' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0]?.[0]).toMatchObject({ title: '새 이름', description: '입주용' });
+    expect(create.mock.calls[0]?.[0].fields).toHaveLength(1);
+  });
+
+  it('고칠 때는 준 이름과 설명을 보내고, 설명을 안 주면 설명 키가 없다', async () => {
+    const update = vi.fn().mockResolvedValue({ id: 't1' });
+    const paper = client({ updateTemplate: update });
+    const { rerender } = render(<TemplateEditor client={paper} templateId="t1" pages={pages} />);
+    fireEvent.click(await screen.findByRole('button', { name: '저장하기' }));
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    expect(update.mock.calls[0]?.[1]).toMatchObject({ title: '임대차' });
+    expect(update.mock.calls[0]?.[1]).not.toHaveProperty('description');
+
+    rerender(<TemplateEditor client={paper} templateId="t1" title="임대차 2" description="" pages={pages} />);
+    fireEvent.click(screen.getByRole('button', { name: '저장하기' }));
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(2));
+    expect(update.mock.calls[1]?.[1]).toMatchObject({ title: '임대차 2', description: '' });
+    expect(paper.getTemplate).toHaveBeenCalledTimes(1);
+  });
+
+  it('칸이 바뀌면 앱에 알린다', async () => {
+    const onFieldsChange = vi.fn();
+    render(<TemplateEditor client={client()} templateId="t1" pages={pages} onFieldsChange={onFieldsChange} />);
+    fireEvent.click(await screen.findByRole('button', { name: '날짜칸 놓기' }));
+    await waitFor(() =>
+      expect(onFieldsChange).toHaveBeenLastCalledWith([
+        expect.objectContaining({ type: 'TEXT', inputType: 'DATE', paramKey: 'date_1' }),
+      ]),
+    );
+  });
 });
