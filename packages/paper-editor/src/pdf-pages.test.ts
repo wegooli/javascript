@@ -79,4 +79,26 @@ describe('계약서 PDF', () => {
     await expect(paint?.(canvas)).resolves.toBeUndefined();
     await closePdfPages(pages);
   });
+
+  it('PDF를 읽은 뒤 전역 워커를 남기지 않고, 두 번째 PDF도 읽는다', async () => {
+    const scope = globalThis as { pdfjsWorker?: unknown };
+    delete scope.pdfjsWorker;
+    const first = await readPdfPages(tinyPdf(300, 400));
+    expect('pdfjsWorker' in scope).toBe(false);
+    const second = await readPdfPages(tinyPdf(200, 100));
+    expect('pdfjsWorker' in scope).toBe(false);
+    expect(second[0]).toMatchObject({ width: 200, height: 100 });
+    await closePdfPages(first);
+    await closePdfPages(second);
+  });
+
+  it('파트너가 먼저 둔 전역 워커는 그대로 돌려놓는다', async () => {
+    const scope = globalThis as { pdfjsWorker?: unknown };
+    const theirs = { WorkerMessageHandler: 'partner' };
+    scope.pdfjsWorker = theirs;
+    const pages = await readPdfPages(tinyPdf(300, 400));
+    expect(scope.pdfjsWorker).toBe(theirs);
+    delete scope.pdfjsWorker;
+    await closePdfPages(pages);
+  });
 });
